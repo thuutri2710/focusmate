@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+     viewBox="-351 153 256 256">
+     
+    <!-- Gradient definitions -->
+    <defs>
+        <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#7CB9E8"/>
+            <stop offset="100%" style="stop-color:#3457D5"/>
+        </linearGradient>
+        <linearGradient id="figureGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#F0F8FF"/>
+            <stop offset="100%" style="stop-color:#E6E6FA"/>
+        </linearGradient>
+    </defs>
+    
+    <!-- Background with soft gradient -->
+    <circle cx="-223" cy="281" r="128" fill="url(#bgGradient)" opacity="0.95"/>
+    
+    <!-- Focus rings -->
+    <circle cx="-223" cy="281" r="100" fill="none" stroke="url(#figureGradient)" stroke-width="2" opacity="0.5"/>
+    <circle cx="-223" cy="281" r="85" fill="none" stroke="url(#figureGradient)" stroke-width="2" opacity="0.4"/>
+    <circle cx="-223" cy="281" r="70" fill="none" stroke="url(#figureGradient)" stroke-width="2" opacity="0.3"/>
+    
+    <!-- Meditation figure with subtle gradient - scaled smaller -->
+    <g opacity="0.9" transform="translate(-223,281) scale(0.45) translate(223,-281)">
+        <!-- Head -->
+        <circle cx="-222.3" cy="188.5" r="31.1" fill="url(#figureGradient)"/>
+        
+        <!-- Body -->
+        <path fill="url(#figureGradient)" 
+            d="M-106.6,332.4c-0.4-0.6-0.9-1.1-1.4-1.6l-35.3-32.8l-22.8-49c-6.2-12.5-15.2-20.3-28.6-20.3h-57.5
+            c-13.5,0-22.4,7.8-28.6,20.3l-22.8,49l-35.3,32.8c-0.5,0.5-1,1.1-1.4,1.6c-3.6,3.1-5.9,7.7-5.9,12.8c0,9.3,7.6,16.9,16.9,16.9
+            c5.5,0,10.3-2.6,13.4-6.7c0.3-0.2,0.6-0.5,0.8-0.7l37.4-34.8c1.4-1.4,2.5-3,3.3-4.8l11.9-25.5l-0.6,45l-52.2,28.4
+            c-9.5,5.2-14,16.4-10.6,26.7c3.4,10.3,13.6,16.7,24.3,15.2l78.1-20.2l78.1,20.2c10.7,1.5,21-4.9,24.3-15.2
+            c3.4-10.3-1.1-21.5-10.6-26.7l-52.2-28.5l-0.6-45l11.9,25.5c0.8,1.8,2,3.4,3.3,4.8l37.4,34.8c0.3,0.3,0.5,0.5,0.8,0.7
+            c3.1,4,7.9,6.7,13.4,6.7c9.3,0,16.9-7.6,16.9-16.9C-100.7,340-103,335.5-106.6,332.4z"/>
+    </g>
+</svg>

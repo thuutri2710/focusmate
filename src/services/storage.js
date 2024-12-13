@@ -1,22 +1,56 @@
+// Cache for rules to avoid frequent storage reads
+let rulesCache = null;
+let rulesCacheTimestamp = 0;
+const CACHE_DURATION = 5000; // 5 seconds cache
+
+async function getRulesFromCache() {
+    const now = Date.now();
+    if (!rulesCache || now - rulesCacheTimestamp > CACHE_DURATION) {
+        const result = await chrome.storage.local.get('blockRules');
+        rulesCache = result.blockRules || [];
+        rulesCacheTimestamp = now;
+    }
+    return rulesCache;
+}
+
+// Create an index of rules by domain for faster lookup
+function createRuleIndex(rules) {
+    const index = new Map();
+    for (const rule of rules) {
+        const domain = rule.websiteUrl.endsWith('/*') 
+            ? rule.websiteUrl.slice(0, -2) 
+            : rule.websiteUrl;
+        if (!index.has(domain)) {
+            index.set(domain, []);
+        }
+        index.get(domain).push(rule);
+    }
+    return index;
+}
+
 export const StorageService = {
     async getRules() {
-        const result = await chrome.storage.local.get('blockRules');
-        return result.blockRules || [];
+        const rules = await getRulesFromCache();
+        return rules;
     },
 
     async saveRule(rule) {
-        const rules = await this.getRules();
+        const rules = await getRulesFromCache();
         rules.push({
             ...rule,
             id: Date.now().toString()
         });
         await chrome.storage.local.set({ blockRules: rules });
+        rulesCache = rules;
+        rulesCacheTimestamp = Date.now();
     },
 
     async deleteRule(ruleId) {
-        const rules = await this.getRules();
+        const rules = await getRulesFromCache();
         const updatedRules = rules.filter(rule => rule.id !== ruleId);
         await chrome.storage.local.set({ blockRules: updatedRules });
+        rulesCache = updatedRules;
+        rulesCacheTimestamp = Date.now();
     },
 
     async cleanupOldTimeUsage() {
@@ -61,51 +95,41 @@ export const StorageService = {
         return Math.round(timeUsage[today]?.[url] || 0);
     },
 
-    async getRules() {
-        const result = await chrome.storage.local.get('blockRules');
-        const rules = result.blockRules || [];
-        
-        // Add time spent today for each rule
-        const rulesWithTimeSpent = await Promise.all(rules.map(async (rule) => {
-            const timeSpent = await this.getTimeSpentToday(rule.websiteUrl);
-            return { ...rule, timeSpentToday: timeSpent };
-        }));
-        
-        return rulesWithTimeSpent;
-    },
-
     async isUrlBlocked(url) {
-        const rules = await this.getRules();
-        const currentTime = new Date('2024-12-13T14:59:46+07:00'); // Using provided time
+        const rules = await getRulesFromCache();
+        const rulesIndex = createRuleIndex(rules);
+        const urlObj = new URL(url);
+        const urlPath = urlObj.origin + urlObj.pathname;
+        
+        // Check exact match first
+        const exactMatches = rulesIndex.get(urlPath) || [];
+        
+        // Check wildcard matches
+        const domainParts = urlPath.split('/');
+        const possibleWildcardDomains = [];
+        for (let i = 0; i < domainParts.length; i++) {
+            const partialPath = domainParts.slice(0, i + 1).join('/');
+            possibleWildcardDomains.push(partialPath);
+        }
+        
+        const matchingRules = [
+            ...exactMatches,
+            ...possibleWildcardDomains.flatMap(domain => rulesIndex.get(domain) || [])
+        ];
+
+        if (matchingRules.length === 0) return null;
+
+        const today = new Date().toLocaleDateString();
+        const timeUsage = await this.getTimeUsage();
+        const currentTime = new Date();
         const currentHour = currentTime.getHours();
         const currentMinute = currentTime.getMinutes();
-        const today = currentTime.toLocaleDateString();
-        
-        // Clean up old data on each check
-        const timeUsage = await this.getTimeUsage();
-        const yesterday = new Date(currentTime);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toLocaleDateString();
-        
-        if (timeUsage[yesterdayStr]) {
-            delete timeUsage[yesterdayStr];
-            await chrome.storage.local.set({ timeUsage });
-        }
 
-        // Find the first matching rule
-        for (const rule of rules) {
-            const ruleUrl = rule.websiteUrl;
-            const isWildcardRule = ruleUrl.endsWith('/*');
-            const baseUrl = isWildcardRule ? ruleUrl.slice(0, -2) : ruleUrl;
-            const urlMatches = isWildcardRule ? 
-                url.startsWith(baseUrl) : 
-                url === baseUrl;
-            
-            if (!urlMatches) continue;
-
+        // Check all matching rules
+        for (const rule of matchingRules) {
             // Check daily time limit
             if (rule.dailyTimeLimit) {
-                const minutesSpentToday = timeUsage[today]?.[url] || 0;
+                const minutesSpentToday = timeUsage[today]?.[urlPath] || 0;
                 if (minutesSpentToday >= rule.dailyTimeLimit) {
                     return rule;
                 }
@@ -116,10 +140,9 @@ export const StorageService = {
                 const currentTimeMinutes = currentHour * 60 + currentMinute;
                 const [startHour, startMinute] = rule.startTime.split(':').map(Number);
                 const [endHour, endMinute] = rule.endTime.split(':').map(Number);
-                
                 const startTimeMinutes = startHour * 60 + startMinute;
                 const endTimeMinutes = endHour * 60 + endMinute;
-                
+
                 if (currentTimeMinutes >= startTimeMinutes && currentTimeMinutes <= endTimeMinutes) {
                     return rule;
                 }

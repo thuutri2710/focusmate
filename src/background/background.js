@@ -3,15 +3,45 @@ import { StorageService } from "../services/storage.js";
 // Track active tabs and their start times
 const activeTabTimes = new Map();
 
-// Set up daily cleanup alarm
-chrome.alarms.create("cleanupTimeUsage", {
-  periodInMinutes: 24 * 60, // Run once every 24 hours
+// Track the current date for cleanup
+let currentDate = new Date().toLocaleDateString();
+
+// Function to check and run cleanup if it's a new day
+async function checkAndCleanup() {
+  const now = new Date();
+  const todayDate = now.toLocaleDateString();
+  
+  if (todayDate !== currentDate) {
+    // It's a new day, run cleanup
+    await StorageService.cleanupOldTimeUsage();
+    currentDate = todayDate;
+  }
+}
+
+// Add periodic time check
+chrome.alarms.create("checkTimeLimit", {
+  periodInMinutes: 1,
 });
 
-// Handle cleanup alarm
+// Handle alarms
 chrome.alarms.onAlarm.addListener(async (alarm) => {
-  if (alarm.name === "cleanupTimeUsage") {
-    await StorageService.cleanupOldTimeUsage();
+  if (alarm.name === "checkTimeLimit") {
+    // Check for new day first
+    await checkAndCleanup();
+    
+    const tabs = await chrome.tabs.query({ active: true });
+    for (const tab of tabs) {
+      if (tab.url) {
+        const url = new URL(tab.url);
+        const urlPath = url.origin + url.pathname;
+        const blockedRule = await StorageService.isUrlBlocked(urlPath);
+        if (blockedRule) {
+          chrome.tabs.update(tab.id, {
+            url: blockedRule.redirectUrl || "https://www.google.com",
+          });
+        }
+      }
+    }
   }
 });
 
@@ -88,28 +118,5 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
     chrome.tabs.update(details.tabId, {
       url: blockedRule.redirectUrl || "https://www.google.com",
     });
-  }
-});
-
-// Add periodic time check (every minute)
-chrome.alarms.create("checkTimeLimit", {
-  periodInMinutes: 1,
-});
-
-chrome.alarms.onAlarm.addListener(async (alarm) => {
-  if (alarm.name === "checkTimeLimit") {
-    const tabs = await chrome.tabs.query({ active: true });
-    for (const tab of tabs) {
-      if (tab.url) {
-        const url = new URL(tab.url);
-        const urlPath = url.origin + url.pathname;
-        const blockedRule = await StorageService.isUrlBlocked(urlPath);
-        if (blockedRule) {
-          chrome.tabs.update(tab.id, {
-            url: blockedRule.redirectUrl || "https://www.google.com",
-          });
-        }
-      }
-    }
   }
 });

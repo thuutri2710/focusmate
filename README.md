@@ -8,6 +8,14 @@
 
 FocusMate is a powerful Chrome extension designed to help you manage your time effectively by monitoring and controlling your website usage. It allows you to set time limits, block distracting websites, and maintain focus on your important tasks.
 
+## Demo
+
+<div align="center">
+  <img src="demo/demo-1.png" alt="FocusMate Demo 1" width="600">
+  
+  <img src="demo/demo-2.png" alt="FocusMate Demo 2" width="600">
+</div>
+
 ## Features
 
 - 🕒 **Time Tracking**: Monitor how much time you spend on different websites

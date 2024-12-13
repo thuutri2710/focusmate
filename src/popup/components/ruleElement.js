@@ -43,7 +43,7 @@ export function createRuleElement(rule) {
                             ? "text-red-600"
                             : "text-amber-600"
                         }">
-                            ${rule.timeSpentToday} minutes
+                            ${rule.timeSpentToday || 0} minutes
                         </span>
                         <span class="text-gray-500">/ ${rule.dailyTimeLimit} minutes</span>
                     </p>

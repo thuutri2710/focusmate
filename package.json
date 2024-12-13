@@ -6,7 +6,7 @@
   "scripts": {
     "move": "cp manifest.json dist/manifest.json && cp -r icons dist/icons",
     "build": "vite build && pnpm move",
-    "export": "rm focusmate-extension.zip && zip -r focusmate-extension.zip dist",
+    "export": "pnpm build && rm focusmate-extension.zip && zip -r focusmate-extension.zip dist",
     "watch": "vite build --watch",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",

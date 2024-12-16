@@ -149,7 +149,7 @@ export const StorageService = {
   },
 
   async deleteRule(ruleId) {
-    const rules = await this.getRules();
+    const rules = await getRulesFromCache();
     const updatedRules = rules.filter((rule) => rule.id !== ruleId);
     await chrome.storage.local.set({ blockRules: updatedRules });
     rulesCache = updatedRules;

@@ -26,8 +26,18 @@ export function createRuleElement(rule, isActiveView = false) {
     }
   } else {
     const timeLeft = Math.max(0, rule.dailyTimeLimit - (rule.timeSpentToday || 0));
-    timeRestrictionText = `<span class="font-medium text-purple-600">${rule.dailyTimeLimit} minutes</span> / day`;
-    if (isActiveView) {
+    timeRestrictionText = `
+      <div class="flex flex-col">
+        <div class="text-sm">
+          <span class="text-gray-500">Time Limit:</span>
+          <span class="font-medium text-purple-600">${rule.dailyTimeLimit} minutes</span>
+        </div>
+        <div class="text-sm">
+          <span class="text-gray-500">Time Spent:</span>
+          <span class="font-medium ${rule.timeSpentToday >= rule.dailyTimeLimit ? 'text-red-600' : 'text-green-600'}">${rule.timeSpentToday || 0} minutes</span>
+        </div>
+      </div>`;
+    if (isActiveView && rule.timeSpentToday >= rule.dailyTimeLimit) {
       statusBadge =
         '<span class="text-xs px-2 py-1 bg-red-100 text-red-800 rounded-full">Limit Reached</span>';
     }
@@ -47,26 +57,11 @@ export function createRuleElement(rule, isActiveView = false) {
         </div>
         <div class="flex flex-col gap-1">
           <p class="text-sm">
-            <span class="text-gray-500">Limit:</span> ${timeRestrictionText}
+            ${timeRestrictionText}
           </p>
           <p class="text-sm">
             <span class="text-gray-500">Redirects to:</span> ${redirectDisplay}
           </p>
-          ${
-            rule.blockingMode === "dailyLimit"
-              ? `
-            <p class="text-sm">
-              <span class="text-gray-500">Time spent today:</span> 
-              <span class="font-medium ${
-                rule.timeSpentToday >= rule.dailyTimeLimit ? "text-red-600" : "text-amber-600"
-              }">
-                ${rule.timeSpentToday || 0} minutes
-              </span>
-              <span class="text-gray-500">/ ${rule.dailyTimeLimit} minutes</span>
-            </p>
-            `
-              : ""
-          }
         </div>
       </div>
       ${

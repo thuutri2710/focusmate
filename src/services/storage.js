@@ -168,11 +168,10 @@ export const StorageService = {
 
     // Only keep today's data
     const cleanedTimeUsage = {
-      [today]: timeUsage[today] || {},
+      [today]: timeUsage[today] || {}
     };
 
     await chrome.storage.local.set({ timeUsage: cleanedTimeUsage });
-    return cleanedTimeUsage;
   },
 
   async getTimeUsage() {

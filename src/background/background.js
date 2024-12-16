@@ -47,6 +47,15 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 
 // Track when a tab becomes active
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  // Update time for previously active tab
+  const tabs = await chrome.tabs.query({ active: true });
+  for (const tab of tabs) {
+    if (tab.id !== activeInfo.tabId) {
+      await updateTabTime(tab.id);
+    }
+  }
+
+  // Start tracking new active tab
   const tab = await chrome.tabs.get(activeInfo.tabId);
   if (tab.url) {
     const url = new URL(tab.url);
@@ -61,12 +70,38 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 // Track when a tab's URL changes
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.url) {
+    // Update time for the old URL
+    await updateTabTime(tabId);
+
+    // Start tracking the new URL
     const url = new URL(changeInfo.url);
     const urlPath = url.origin + url.pathname;
     activeTabTimes.set(tabId, {
       url: urlPath,
       startTime: Date.now(),
     });
+  }
+});
+
+// Track when window focus changes
+chrome.windows.onFocusChanged.addListener(async (windowId) => {
+  if (windowId === chrome.windows.WINDOW_ID_NONE) {
+    // Window lost focus, update all active tabs
+    const tabs = await chrome.tabs.query({ active: true });
+    for (const tab of tabs) {
+      await updateTabTime(tab.id);
+    }
+  } else {
+    // Window gained focus, start tracking active tab
+    const tabs = await chrome.tabs.query({ active: true, windowId });
+    for (const tab of tabs) {
+      const url = new URL(tab.url);
+      const urlPath = url.origin + url.pathname;
+      activeTabTimes.set(tab.id, {
+        url: urlPath,
+        startTime: Date.now(),
+      });
+    }
   }
 });
 
@@ -91,16 +126,6 @@ async function updateTabTime(tabId) {
 
 chrome.tabs.onRemoved.addListener(async (tabId) => {
   await updateTabTime(tabId);
-});
-
-chrome.tabs.onActivated.addListener(async (activeInfo) => {
-  // Update time for previously active tab
-  const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-  for (const tab of tabs) {
-    if (tab.id !== activeInfo.tabId) {
-      await updateTabTime(tab.id);
-    }
-  }
 });
 
 chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {

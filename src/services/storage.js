@@ -137,12 +137,16 @@ export const StorageService = {
 
   async saveRule(rule) {
     const rules = await getRulesFromCache();
-    const normalizedRule = {
-      ...rule,
-      id: Date.now().toString(),
-      websiteUrl: rule.websiteUrl.trim(),
-    };
-    rules.push(normalizedRule);
+    const existingIndex = rules.findIndex((r) => r.id === rule.id);
+    
+    if (existingIndex >= 0) {
+      // Update existing rule
+      rules[existingIndex] = rule;
+    } else {
+      // Add new rule
+      rules.push(rule);
+    }
+
     await chrome.storage.local.set({ blockRules: rules });
     rulesCache = rules;
     rulesCacheTimestamp = Date.now();

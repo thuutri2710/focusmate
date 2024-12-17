@@ -262,16 +262,6 @@ async function loadApplyingRules() {
 
   if (applyingRules.length === 0) {
     applyingRulesList.innerHTML = TEMPLATES.EMPTY_STATE.NO_APPLYING_RULES;
-
-    document.getElementById(DOM_IDS.ADD_RULE_FOR_CURRENT)?.addEventListener("click", () => {
-      isEditButtonClick = true;
-      document.getElementById(DOM_IDS.WEBSITE_URL).value = currentTabUrl;
-      document.getElementById(DOM_IDS.ADD_RULE_TAB).click();
-
-      setTimeout(() => {
-        isEditButtonClick = false;
-      }, 100);
-    });
   } else {
     // Sort rules by specificity (exact matches first, then pattern matches)
     applyingRules.sort((a, b) => {
@@ -315,6 +305,22 @@ function setupEventListeners() {
   // Handle tab switching
   document.querySelectorAll("[data-tab]").forEach((tab) => {
     tab.addEventListener(EVENTS.CLICK, handleTabSwitch);
+  });
+
+  // Handle "Add rule for this site" button click
+  document.addEventListener(EVENTS.CLICK, (e) => {
+    const addRuleButton = e.target.closest("#" + DOM_IDS.ADD_RULE_FOR_CURRENT);
+    if (addRuleButton) {
+      isEditButtonClick = true;
+
+      // We must switch to the Add Rule tab first then fill the form
+      document.getElementById(DOM_IDS.ADD_RULE_TAB).click();
+      document.getElementById(DOM_IDS.WEBSITE_URL).value = currentTabUrl;
+
+      setTimeout(() => {
+        isEditButtonClick = false;
+      }, 100);
+    }
   });
 
   // Handle blocking mode changes
@@ -370,50 +376,50 @@ function setupEventListeners() {
 
       if (!validationResult.isValid) {
         Analytics.trackError("form_error", validationResult.errors.join(", "));
-        
+
         // Clear any existing error messages
         const errorFields = document.querySelectorAll(".error-message");
         errorFields.forEach((field) => field.remove());
 
         // Clear error states from inputs
-        const inputs = blockForm.querySelectorAll('input');
-        inputs.forEach(input => {
-          input.classList.remove('border-red-500', 'focus:ring-red-500');
+        const inputs = blockForm.querySelectorAll("input");
+        inputs.forEach((input) => {
+          input.classList.remove("border-red-500", "focus:ring-red-500");
         });
 
         // Show field-specific errors
         Object.entries(validationResult.fieldErrors).forEach(([field, error]) => {
           let targetInput;
           switch (field) {
-            case 'websiteUrl':
-              targetInput = blockForm.querySelector('#websiteUrl');
+            case "websiteUrl":
+              targetInput = blockForm.querySelector("#websiteUrl");
               break;
-            case 'startTime':
+            case "startTime":
               targetInput = blockForm.querySelector('[name="startTime"]');
               break;
-            case 'endTime':
+            case "endTime":
               targetInput = blockForm.querySelector('[name="endTime"]');
               break;
-            case 'dailyTimeLimit':
+            case "dailyTimeLimit":
               targetInput = blockForm.querySelector('[name="dailyTimeLimit"]');
               break;
           }
 
           if (targetInput) {
             // Find the parent div that contains the input
-            const inputGroup = targetInput.closest('.mb-4');
+            const inputGroup = targetInput.closest(".mb-4");
             if (inputGroup) {
               // Create error message div
               const errorDiv = document.createElement("div");
               errorDiv.className = "error-message text-xs text-red-600 mt-1";
               errorDiv.textContent = error;
-              
+
               // Add the error message
               inputGroup.appendChild(errorDiv);
-              
+
               // Add error styling to input
-              targetInput.classList.add('border-red-500');
-              targetInput.classList.add('focus:ring-red-500');
+              targetInput.classList.add("border-red-500");
+              targetInput.classList.add("focus:ring-red-500");
             }
           }
         });
@@ -446,11 +452,11 @@ function setupEventListeners() {
       // Clear any existing error messages and states
       const errorFields = document.querySelectorAll(".error-message");
       errorFields.forEach((field) => field.remove());
-      
+
       // Clear error states from inputs
-      const inputs = blockForm.querySelectorAll('input');
-      inputs.forEach(input => {
-        input.classList.remove('border-red-500', 'focus:ring-red-500');
+      const inputs = blockForm.querySelectorAll("input");
+      inputs.forEach((input) => {
+        input.classList.remove("border-red-500", "focus:ring-red-500");
       });
 
       await updateRuleLists();
@@ -503,17 +509,17 @@ function handleTabSwitch(e) {
         errorFields.forEach((field) => field.remove());
 
         // Clear error states from inputs
-        const inputs = blockForm.querySelectorAll('input');
-        inputs.forEach(input => {
-          input.classList.remove('border-red-500', 'focus:ring-red-500');
-          input.classList.remove('border-red-500');
+        const inputs = blockForm.querySelectorAll("input");
+        inputs.forEach((input) => {
+          input.classList.remove("border-red-500", "focus:ring-red-500");
+          input.classList.remove("border-red-500");
         });
 
         // Reset validation error container
-        const validationErrors = document.getElementById('validation-errors');
+        const validationErrors = document.getElementById("validation-errors");
         if (validationErrors) {
-          validationErrors.innerHTML = '';
-          validationErrors.classList.add('hidden');
+          validationErrors.innerHTML = "";
+          validationErrors.classList.add("hidden");
         }
 
         // Reset form fields

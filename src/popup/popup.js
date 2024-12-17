@@ -1,7 +1,7 @@
 import { StorageService } from "../services/storage.js";
 import { createRuleElement } from "./components/ruleElement.js";
 import { validateRule } from "../utils/validation.js";
-import { DOM_IDS, EVENTS } from "../constants/index.js";
+import { DOM_IDS, EVENTS, BLOCKING_MODES } from "../constants/index.js";
 import { TEMPLATES } from "../constants/templates.js";
 
 // Track current tab URL
@@ -72,10 +72,13 @@ async function loadActiveRules() {
       // Fill form with rule data
       document.getElementById(DOM_IDS.WEBSITE_URL).value = rule.websiteUrl;
       document.getElementById(DOM_IDS.REDIRECT_URL).value = rule.redirectUrl || "";
-      document.getElementById(DOM_IDS.BLOCKING_MODE).value = rule.blockingMode;
-      handleBlockingModeChange({ target: { value: rule.blockingMode } });
+      
+      // Set blocking mode and trigger change event
+      const blockingModeInput = document.getElementById(DOM_IDS.BLOCKING_MODE);
+      blockingModeInput.value = rule.blockingMode;
+      blockingModeInput.dispatchEvent(new Event(EVENTS.CHANGE));
 
-      // Show/hide appropriate fields based on blocking mode
+      // Set the appropriate fields based on blocking mode
       if (rule.blockingMode === "timeRange") {
         document.getElementById(DOM_IDS.START_TIME).value = rule.startTime;
         document.getElementById(DOM_IDS.END_TIME).value = rule.endTime;
@@ -218,14 +221,14 @@ function setupEventListeners() {
   document.querySelectorAll('input[name="blockingMode"]').forEach((radio) => {
     radio.addEventListener(EVENTS.CHANGE, (e) => {
       const timeRangeFields = document.getElementById(DOM_IDS.TIME_RANGE_FIELDS);
-      const dailyLimitFields = document.getElementById(DOM_IDS.DAILY_LIMIT_FIELDS);
+      const timeLimitFields = document.getElementById(DOM_IDS.TIME_LIMIT_FIELDS);
 
-      if (e.target.value === "timeRange") {
+      if (e.target.value === BLOCKING_MODES.TIME_RANGE) {
         timeRangeFields.classList.remove("hidden");
-        dailyLimitFields.classList.add("hidden");
+        timeLimitFields.classList.add("hidden");
       } else {
         timeRangeFields.classList.add("hidden");
-        dailyLimitFields.classList.remove("hidden");
+        timeLimitFields.classList.remove("hidden");
       }
     });
   });
@@ -263,15 +266,12 @@ function setupEventListeners() {
     if (form.dataset.editRuleId) {
       form.dataset.editRuleId = "";
       document.getElementById(DOM_IDS.ACTIVE_RULES_TAB).click();
+      form.reset();
+      document.querySelector(`#${DOM_IDS.BLOCK_FORM} button[type="submit"]`).textContent = "Add blocking rule";
     }
 
-    e.target.reset();
-
-    // Reset submit button text
-    document.querySelector(`#${DOM_IDS.BLOCK_FORM} button[type="submit"]`).textContent = "Add blocking rule";
-
-    // Reset to default time range mode
-    handleBlockingModeChange({ target: { value: "timeRange" } });
+    // Do not reset blocking mode to timeRange by default
+    // handleBlockingModeChange({ target: { value: "timeRange" } });
   });
 }
 

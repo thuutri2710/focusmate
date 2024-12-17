@@ -3,7 +3,7 @@ import { CSS_CLASSES } from './index.js';
 export const SVG = {
   EMPTY_STATE: `
     <svg class="${CSS_CLASSES.EMPTY_STATE.ICON}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M12 13h.01M12 18a6 6 0 100-12 6 6 0 000 12z" />
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 3H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2h-2M8 3v2m0-2h8m0 0v2m0-2z" />
     </svg>
   `,
   LOGO: `
@@ -55,7 +55,7 @@ export const TEMPLATES = {
     NO_RULES: `
       <div class="text-center py-8 text-gray-500">
         <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M12 13h.01M12 18a6 6 0 100-12 6 6 0 000 12z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 3H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2h-2M8 3v2m0-2h8m0 0v2m0-2z" />
         </svg>
         <p>No rules yet</p>
         <p class="text-sm mt-2">Add your first rule to get started</p>
@@ -64,7 +64,7 @@ export const TEMPLATES = {
     NO_APPLYING_RULES: `
       <div class="text-center py-8 text-gray-500">
         <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M12 13h.01M12 18a6 6 0 100-12 6 6 0 000 12z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 3H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2h-2M8 3v2m0-2h8m0 0v2m0-2z" />
         </svg>
         <p>No rules apply to this page</p>
         <button id="addRuleForCurrent" class="mt-4 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline">

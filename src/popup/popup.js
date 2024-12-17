@@ -3,7 +3,9 @@ import { createRuleElement } from "./components/ruleElement.js";
 import { validateRule } from "../utils/validation.js";
 import { DOM_IDS, EVENTS, BLOCKING_MODES } from "../constants/index.js";
 import { TEMPLATES } from "../constants/templates.js";
-import { showErrorToast, showFormValidationErrors } from "../utils/uiUtils.js";
+import { showErrorToast } from "../utils/uiUtils.js";
+import { Analytics } from "../services/analytics.js";
+import { ANALYTICS_CONFIG } from "../config/analytics.js";
 
 // Track current tab URL
 let currentTabUrl = "";
@@ -13,6 +15,10 @@ let currentRules = [];
 let isEditButtonClick = false;
 
 document.addEventListener(EVENTS.DOM_CONTENT_LOADED, async () => {
+  // Initialize Analytics
+  Analytics.init(ANALYTICS_CONFIG.MEASUREMENT_ID);
+  Analytics.trackPopupOpen();
+
   // Get current tab URL when popup opens
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (tabs[0]) {
@@ -23,56 +29,59 @@ document.addEventListener(EVENTS.DOM_CONTENT_LOADED, async () => {
       const urlInput = document.getElementById(DOM_IDS.WEBSITE_URL);
       if (urlInput) {
         urlInput.value = currentTabUrl;
+        Analytics.trackUrlAutofill();
       }
 
       // Add click handler to the parent div containing the link icon
-      const currentUrlInfo = document.getElementById('currentUrlInfo');
-      const iconContainer = currentUrlInfo.querySelector('svg');
+      const currentUrlInfo = document.getElementById("currentUrlInfo");
+      const iconContainer = currentUrlInfo.querySelector("svg");
       const originalIcon = `
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
           d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
       `;
-      
+
       const successIcon = `
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
           d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
       `;
-      
+
       const errorIcon = `
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
           d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
       `;
-      
+
       // Make the icon look clickable
-      iconContainer.style.cursor = 'pointer';
-      
+      iconContainer.style.cursor = "pointer";
+
       // Add hover effect
-      iconContainer.addEventListener('mouseenter', () => {
-        iconContainer.style.color = '#4B5563'; // text-gray-700
+      iconContainer.addEventListener("mouseenter", () => {
+        iconContainer.style.color = "#4B5563"; // text-gray-700
       });
-      
-      iconContainer.addEventListener('mouseleave', () => {
-        iconContainer.style.color = '#4B5563'; // text-gray-600
+
+      iconContainer.addEventListener("mouseleave", () => {
+        iconContainer.style.color = "#4B5563"; // text-gray-600
       });
 
       // Add click handler for copying
-      iconContainer.addEventListener('click', async () => {
+      iconContainer.addEventListener("click", async () => {
         try {
           await navigator.clipboard.writeText(currentTabUrl);
+          Analytics.trackUrlCopy(true);
           // Show success icon
-          iconContainer.style.stroke = '#059669';
+          iconContainer.style.stroke = "#059669";
           iconContainer.innerHTML = successIcon;
           setTimeout(() => {
-            iconContainer.style.stroke = 'currentColor';
+            iconContainer.style.stroke = "currentColor";
             iconContainer.innerHTML = originalIcon;
           }, 1000);
         } catch (err) {
-          console.error('Failed to copy URL:', err);
+          Analytics.trackUrlCopy(false);
+          console.error("Failed to copy URL:", err);
           // Show error icon
-          iconContainer.style.stroke = '#DC2626';
+          iconContainer.style.stroke = "#DC2626";
           iconContainer.innerHTML = errorIcon;
           setTimeout(() => {
-            iconContainer.style.stroke = 'currentColor';
+            iconContainer.style.stroke = "currentColor";
             iconContainer.innerHTML = originalIcon;
           }, 1000);
         }
@@ -119,6 +128,7 @@ async function loadActiveRules() {
     editButton?.addEventListener("click", (e) => {
       e.stopPropagation();
       isEditButtonClick = true;
+      Analytics.trackRuleEdit(rule.blockingMode);
 
       // Fill form with rule data first
       document.getElementById(DOM_IDS.WEBSITE_URL).value = rule.websiteUrl;
@@ -159,6 +169,25 @@ async function loadActiveRules() {
       setTimeout(() => {
         isEditButtonClick = false;
       }, 100);
+    });
+
+    // Add click handler for delete button
+    const deleteButton = ruleElement.querySelector(".delete-rule-btn");
+    deleteButton?.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      await StorageService.deleteRule(rule.id);
+      Analytics.trackRuleDeletion(rule.blockingMode);
+      await updateRuleLists();
+    });
+
+    // Add click handler for toggle button
+    const toggleButton = ruleElement.querySelector(".toggle-rule-btn");
+    toggleButton?.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      rule.enabled = !rule.enabled;
+      await StorageService.updateRule(rule);
+      Analytics.trackRuleToggle(rule.enabled);
+      await updateRuleLists();
     });
   });
 }
@@ -304,165 +333,195 @@ function setupEventListeners() {
         timeRangeFields.classList.add("hidden");
         timeLimitFields.classList.remove("hidden");
       }
+      Analytics.trackBlockingModeSelection(e.target.value);
     });
   });
 
   // Handle form submission
-  document.getElementById(DOM_IDS.BLOCK_FORM).addEventListener(EVENTS.SUBMIT, async (e) => {
+  const blockForm = document.getElementById(DOM_IDS.BLOCK_FORM);
+  blockForm.addEventListener("submit", async (e) => {
     e.preventDefault();
-    console.log("Form submitted");
 
-    const form = e.target;
-    const websiteUrl = form.websiteUrl.value.trim();
-    const redirectUrl = form.redirectUrl.value.trim();
-    const blockingModeRadio = document.querySelector(
-      'input[name="blockingModeRadio"]:checked'
-    );
-
-    if (!blockingModeRadio) {
-      console.error("No blocking mode selected");
-      return;
-    }
+    const formData = new FormData(blockForm);
+    const websiteUrl = (formData.get("websiteUrl") || "").trim();
+    const redirectUrl = (formData.get("redirectUrl") || "").trim();
+    const blockingModeRadio = document.querySelector('input[name="blockingModeRadio"]:checked');
 
     const blockingMode = blockingModeRadio.value;
-    console.log("Form values:", { websiteUrl, redirectUrl, blockingMode });
 
+    // Construct the rule object for validation
     const rule = {
-      id: form.dataset.editRuleId || Date.now().toString(),
       websiteUrl,
       redirectUrl,
       blockingMode,
     };
 
+    // Add time-specific fields based on blocking mode
     if (blockingMode === BLOCKING_MODES.TIME_RANGE) {
-      rule.startTime = form.startTime.value;
-      rule.endTime = form.endTime.value;
-    } else {
-      rule.dailyTimeLimit = parseInt(form.dailyTimeLimit.value);
+      rule.startTime = formData.get("startTime") || "";
+      rule.endTime = formData.get("endTime") || "";
+    } else if (blockingMode === BLOCKING_MODES.DAILY_LIMIT) {
+      rule.dailyTimeLimit = formData.get("dailyTimeLimit") || "";
     }
 
-    console.log("Rule to save:", rule);
-
     try {
-      // Validate rule before saving
+      // Validate the rule first
       const validationResult = validateRule(rule);
+
       if (!validationResult.isValid) {
+        Analytics.trackError("form_error", validationResult.errors.join(", "));
+        
         // Clear any existing error messages
-        const errorFields = document.querySelectorAll('[id$="-error"]');
-        errorFields.forEach(field => {
-          field.classList.add('hidden');
-          field.textContent = '';
+        const errorFields = document.querySelectorAll(".error-message");
+        errorFields.forEach((field) => field.remove());
+
+        // Clear error states from inputs
+        const inputs = blockForm.querySelectorAll('input');
+        inputs.forEach(input => {
+          input.classList.remove('border-red-500', 'focus:ring-red-500');
         });
 
-        // Show errors under corresponding fields
-        validationResult.errors.forEach(error => {
-          let errorField;
-          if (error.includes('Website URL') || error.includes('Invalid URL') || 
-              error.includes('Invalid regex') || error.includes('Invalid wildcard')) {
-            errorField = document.getElementById('websiteUrl-error');
-          } else if (error.includes('Start time')) {
-            errorField = document.getElementById('startTime-error');
-          } else if (error.includes('End time')) {
-            errorField = document.getElementById('endTime-error');
-          } else if (error.includes('Daily time limit')) {
-            errorField = document.getElementById('dailyTimeLimit-error');
+        // Show field-specific errors
+        Object.entries(validationResult.fieldErrors).forEach(([field, error]) => {
+          let targetInput;
+          switch (field) {
+            case 'websiteUrl':
+              targetInput = blockForm.querySelector('#websiteUrl');
+              break;
+            case 'startTime':
+              targetInput = blockForm.querySelector('[name="startTime"]');
+              break;
+            case 'endTime':
+              targetInput = blockForm.querySelector('[name="endTime"]');
+              break;
+            case 'dailyTimeLimit':
+              targetInput = blockForm.querySelector('[name="dailyTimeLimit"]');
+              break;
           }
 
-          if (errorField) {
-            errorField.textContent = error;
-            errorField.classList.remove('hidden');
+          if (targetInput) {
+            // Find the parent div that contains the input
+            const inputGroup = targetInput.closest('.mb-4');
+            if (inputGroup) {
+              // Create error message div
+              const errorDiv = document.createElement("div");
+              errorDiv.className = "error-message text-xs text-red-600 mt-1";
+              errorDiv.textContent = error;
+              
+              // Add the error message
+              inputGroup.appendChild(errorDiv);
+              
+              // Add error styling to input
+              targetInput.classList.add('border-red-500');
+              targetInput.classList.add('focus:ring-red-500');
+            }
           }
         });
         return;
       }
 
-      // Clear any existing error messages on success
-      const errorFields = document.querySelectorAll('[id$="-error"]');
-      errorFields.forEach(field => {
-        field.classList.add('hidden');
-        field.textContent = '';
+      // If validation passes, proceed with saving
+      if (blockForm.dataset.editRuleId) {
+        rule.id = blockForm.dataset.editRuleId;
+        await StorageService.updateRule(rule);
+        Analytics.trackRuleEdit(rule.blockingMode);
+        delete blockForm.dataset.editRuleId;
+      } else {
+        await StorageService.addRule(rule);
+        Analytics.trackRuleCreation(rule.blockingMode);
+      }
+
+      // Track time settings after successful save
+      if (blockingMode === BLOCKING_MODES.TIME_RANGE) {
+        Analytics.trackTimeRangeSet(`${rule.startTime}-${rule.endTime}`);
+      } else if (blockingMode === BLOCKING_MODES.DAILY_LIMIT) {
+        Analytics.trackTimeRangeSet(`daily-${rule.dailyTimeLimit}`);
+      }
+
+      // Reset form and update lists
+      blockForm.reset();
+      document.querySelector(`#${DOM_IDS.BLOCK_FORM} button[type="submit"]`).textContent =
+        "Add blocking rule";
+
+      // Clear any existing error messages and states
+      const errorFields = document.querySelectorAll(".error-message");
+      errorFields.forEach((field) => field.remove());
+      
+      // Clear error states from inputs
+      const inputs = blockForm.querySelectorAll('input');
+      inputs.forEach(input => {
+        input.classList.remove('border-red-500', 'focus:ring-red-500');
       });
-
-      if (form.dataset.editRuleId) {
-        await StorageService.saveRule(rule);
-        console.log("Rule updated");
-      } else {
-        await StorageService.saveRule(rule);
-        console.log("Rule added");
-      }
-
-      // Reset form and switch to All Rules tab if we were editing
-      if (form.dataset.editRuleId) {
-        form.dataset.editRuleId = "";
-        document.getElementById(DOM_IDS.ACTIVE_RULES_TAB).click();
-        form.reset();
-        document.querySelector(`#${DOM_IDS.BLOCK_FORM} button[type="submit"]`).textContent =
-          "Add blocking rule";
-      } else {
-        // Also reset form after adding a new rule
-        form.reset();
-        document.getElementById(DOM_IDS.ACTIVE_RULES_TAB).click();
-      }
 
       await updateRuleLists();
     } catch (error) {
       console.error("Error saving rule:", error);
+      Analytics.trackError("storage_error", error.message);
       showErrorToast("Failed to save rule: " + error.message);
     }
+  });
+
+  // Handle removing all rules
+  document.getElementById(DOM_IDS.REMOVE_ALL_RULES).addEventListener(EVENTS.CLICK, async () => {
+    await StorageService.clearAllRules();
+    Analytics.trackClearAllRules();
+    await updateRuleLists();
   });
 }
 
 function handleTabSwitch(e) {
-  e.preventDefault();
+  if (e.target.classList.contains("tab-button")) {
+    const tabId = e.target.getAttribute("data-tab");
+    Analytics.trackTabSwitch(tabId);
 
-  // Remove active classes from all tabs and content
-  document.querySelectorAll(".tab-button").forEach((tab) => {
-    tab.classList.remove("active", "border-blue-500", "text-blue-600");
-    tab.classList.add("border-transparent", "text-gray-500");
-  });
+    // Remove active classes from all tabs and content
+    document.querySelectorAll(".tab-button").forEach((tab) => {
+      tab.classList.remove("active", "border-blue-500", "text-blue-600");
+      tab.classList.add("border-transparent", "text-gray-500");
+    });
 
-  document.querySelectorAll(".tab-pane").forEach((pane) => {
-    pane.classList.add("hidden");
-  });
+    document.querySelectorAll(".tab-pane").forEach((pane) => {
+      pane.classList.add("hidden");
+    });
 
-  // Add active classes to clicked tab
-  const button = e.currentTarget;
-  const tabId = button.getAttribute("data-tab");
+    // Add active classes to clicked tab
+    const button = e.currentTarget;
 
-  button.classList.remove("border-transparent", "text-gray-500");
-  button.classList.add("active", "border-blue-500", "text-blue-600");
+    button.classList.remove("border-transparent", "text-gray-500");
+    button.classList.add("active", "border-blue-500", "text-blue-600");
 
-  // Show selected content
-  const tabContent = document.getElementById(tabId);
-  tabContent.classList.remove("hidden");
+    // Show selected content
+    const tabContent = document.getElementById(tabId);
+    tabContent.classList.remove("hidden");
 
-  // Reset form when switching to Active Rules tab or Add Rule tab (unless coming from edit button)
-  if (
-    tabId === DOM_IDS.ACTIVE_RULES_CONTENT ||
-    (tabId === DOM_IDS.ADD_RULE_CONTENT && !isEditButtonClick)
-  ) {
-    const form = document.getElementById(DOM_IDS.BLOCK_FORM);
-    form.reset();
-    form.dataset.editRuleId = "";
+    // Reset form when switching to Active Rules tab or Add Rule tab (unless coming from edit button)
+    if (
+      tabId === DOM_IDS.ACTIVE_RULES_CONTENT ||
+      (tabId === DOM_IDS.ADD_RULE_CONTENT && !isEditButtonClick)
+    ) {
+      const form = document.getElementById(DOM_IDS.BLOCK_FORM);
+      form.reset();
+      form.dataset.editRuleId = "";
 
-    // Reset radio button to Time Range and show/hide appropriate fields
-    const timeRangeRadio = document.querySelector(
-      'input[name="blockingModeRadio"][value="timeRange"]'
-    );
-    if (timeRangeRadio) {
-      timeRangeRadio.checked = true;
-      document.getElementById(DOM_IDS.TIME_RANGE_FIELDS).classList.remove("hidden");
-      document.getElementById(DOM_IDS.TIME_LIMIT_FIELDS).classList.add("hidden");
+      // Reset radio button to Time Range and show/hide appropriate fields
+      const timeRangeRadio = document.querySelector(
+        'input[name="blockingModeRadio"][value="timeRange"]'
+      );
+      if (timeRangeRadio) {
+        timeRangeRadio.checked = true;
+        document.getElementById(DOM_IDS.TIME_RANGE_FIELDS).classList.remove("hidden");
+        document.getElementById(DOM_IDS.TIME_LIMIT_FIELDS).classList.add("hidden");
+      }
+
+      // Reset submit button text
+      document.querySelector(`#${DOM_IDS.BLOCK_FORM} button[type="submit"]`).textContent =
+        "Add blocking rule";
     }
 
-    // Reset submit button text
-    document.querySelector(`#${DOM_IDS.BLOCK_FORM} button[type="submit"]`).textContent =
-      "Add blocking rule";
-  }
-
-  // Load active rules if switching to that tab
-  if (tabId === DOM_IDS.ACTIVE_RULES_CONTENT) {
-    loadActiveRules();
+    // Load active rules if switching to that tab
+    if (tabId === DOM_IDS.ACTIVE_RULES_CONTENT) {
+      loadActiveRules();
+    }
   }
 }
 
@@ -470,9 +529,3 @@ function handleTabSwitch(e) {
 async function updateRuleLists() {
   await loadRules();
 }
-
-// Handle removing all rules
-document.getElementById(DOM_IDS.REMOVE_ALL_RULES).addEventListener(EVENTS.CLICK, async () => {
-  await StorageService.clearAllRules();
-  await updateRuleLists();
-});

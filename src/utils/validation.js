@@ -1,20 +1,20 @@
-import { BLOCKING_MODES } from '../constants/index.js';
+import { BLOCKING_MODES } from "../constants/index.js";
 
 const URL_PATTERNS = {
   PROTOCOL: /^https?:\/\//,
   BASIC: /^[a-zA-Z0-9][a-zA-Z0-9-_.]*\.[a-zA-Z]{2,}(\/[^\s]*)?\/?$/,
-  WILDCARD_TLD: /^[*?]+$/
+  WILDCARD_TLD: /^[*?]+$/,
 };
 
 const VALIDATION_MESSAGES = {
-  WEBSITE_URL_REQUIRED: 'Website URL is required',
-  INVALID_REGEX: 'Invalid regular expression pattern',
-  INVALID_WILDCARD: 'Invalid wildcard pattern',
-  INVALID_URL: 'Invalid URL format',
-  START_TIME_REQUIRED: 'Start time is required for time range blocking',
-  END_TIME_REQUIRED: 'End time is required for time range blocking',
-  DAILY_LIMIT_REQUIRED: 'Daily time limit is required for time limit blocking',
-  DAILY_LIMIT_POSITIVE: 'Daily time limit must be a positive number'
+  WEBSITE_URL_REQUIRED: "Website URL is required",
+  INVALID_REGEX: "Invalid regular expression pattern",
+  INVALID_WILDCARD: "Invalid wildcard pattern",
+  INVALID_URL: "Invalid URL format",
+  START_TIME_REQUIRED: "Start time is required for time range blocking",
+  END_TIME_REQUIRED: "End time is required for time range blocking",
+  DAILY_LIMIT_REQUIRED: "Daily time limit is required for time limit blocking",
+  DAILY_LIMIT_POSITIVE: "Daily time limit must be a positive number",
 };
 
 function isValidRegexPattern(pattern) {
@@ -52,50 +52,59 @@ function isValidUrl(url) {
 
 export function validateRule(rule) {
   const errors = [];
+  const fieldErrors = {};
 
+  // Website URL validation
   if (!rule.websiteUrl) {
     errors.push(VALIDATION_MESSAGES.WEBSITE_URL_REQUIRED);
-    return { isValid: false, errors };
-  }
+    fieldErrors.websiteUrl = VALIDATION_MESSAGES.WEBSITE_URL_REQUIRED;
+  } else {
+    const websiteUrl = rule.websiteUrl.trim();
 
-  const websiteUrl = rule.websiteUrl.trim();
-
-  // Check if it's a regex pattern
-  if (websiteUrl.startsWith("/") && websiteUrl.endsWith("/")) {
-    if (!isValidRegexPattern(websiteUrl)) {
-      errors.push(VALIDATION_MESSAGES.INVALID_REGEX);
+    // Check if it's a regex pattern
+    if (websiteUrl.startsWith("/") && websiteUrl.endsWith("/")) {
+      if (!isValidRegexPattern(websiteUrl)) {
+        errors.push(VALIDATION_MESSAGES.INVALID_REGEX);
+        fieldErrors.websiteUrl = VALIDATION_MESSAGES.INVALID_REGEX;
+      }
     }
-  }
-  // Check if it's a wildcard pattern
-  else if (websiteUrl.includes("*") || websiteUrl.includes("?")) {
-    if (!isValidWildcardPattern(websiteUrl)) {
-      errors.push(VALIDATION_MESSAGES.INVALID_WILDCARD);
+    // Check if it's a wildcard pattern
+    else if (websiteUrl.includes("*") || websiteUrl.includes("?")) {
+      if (!isValidWildcardPattern(websiteUrl)) {
+        errors.push(VALIDATION_MESSAGES.INVALID_WILDCARD);
+        fieldErrors.websiteUrl = VALIDATION_MESSAGES.INVALID_WILDCARD;
+      }
     }
-  }
-  // Regular URL validation
-  else if (!isValidUrl(websiteUrl)) {
-    errors.push(VALIDATION_MESSAGES.INVALID_URL);
+    // Regular URL validation
+    else if (!isValidUrl(websiteUrl)) {
+      errors.push(VALIDATION_MESSAGES.INVALID_URL);
+      fieldErrors.websiteUrl = VALIDATION_MESSAGES.INVALID_URL;
+    }
   }
 
   // Validate blocking mode specific fields
   if (rule.blockingMode === BLOCKING_MODES.TIME_RANGE) {
     if (!rule.startTime) {
       errors.push(VALIDATION_MESSAGES.START_TIME_REQUIRED);
+      fieldErrors.startTime = VALIDATION_MESSAGES.START_TIME_REQUIRED;
     }
     if (!rule.endTime) {
       errors.push(VALIDATION_MESSAGES.END_TIME_REQUIRED);
+      fieldErrors.endTime = VALIDATION_MESSAGES.END_TIME_REQUIRED;
     }
-  } else {
+  } else if (rule.blockingMode === BLOCKING_MODES.DAILY_LIMIT) {
     if (!rule.dailyTimeLimit) {
       errors.push(VALIDATION_MESSAGES.DAILY_LIMIT_REQUIRED);
-    }
-    if (rule.dailyTimeLimit <= 0) {
+      fieldErrors.dailyTimeLimit = VALIDATION_MESSAGES.DAILY_LIMIT_REQUIRED;
+    } else if (rule.dailyTimeLimit <= 0) {
       errors.push(VALIDATION_MESSAGES.DAILY_LIMIT_POSITIVE);
+      fieldErrors.dailyTimeLimit = VALIDATION_MESSAGES.DAILY_LIMIT_POSITIVE;
     }
   }
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
+    fieldErrors,
   };
 }

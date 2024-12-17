@@ -2,6 +2,7 @@ import { BLOCKING_MODES } from "../../constants/index.js";
 import { TEMPLATES } from "../../constants/templates.js";
 import { StorageService } from "../../services/storage.js";
 import { loadRules } from "../popup.js";
+import { showErrorToast } from "../../utils/uiUtils.js";
 
 export function createRuleElement(rule, isActiveView = false) {
   const div = document.createElement("div");
@@ -100,7 +101,7 @@ export function createRuleElement(rule, isActiveView = false) {
       await loadRules();
     } catch (error) {
       console.error("Error deleting rule:", error);
-      alert("Failed to delete rule: " + error.message);
+      showErrorToast("Failed to delete rule: " + error.message);
     }
   });
 

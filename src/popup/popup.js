@@ -3,6 +3,7 @@ import { createRuleElement } from "./components/ruleElement.js";
 import { validateRule } from "../utils/validation.js";
 import { DOM_IDS, EVENTS, BLOCKING_MODES } from "../constants/index.js";
 import { TEMPLATES } from "../constants/templates.js";
+import { showErrorToast, showFormValidationErrors } from "../utils/uiUtils.js";
 
 // Track current tab URL
 let currentTabUrl = "";
@@ -346,12 +347,41 @@ function setupEventListeners() {
       // Validate rule before saving
       const validationResult = validateRule(rule);
       if (!validationResult.isValid) {
-        console.error("Validation failed:", validationResult.errors);
-        // Display validation errors to user
-        const errorMessages = validationResult.errors.join("\n");
-        alert(errorMessages);
+        // Clear any existing error messages
+        const errorFields = document.querySelectorAll('[id$="-error"]');
+        errorFields.forEach(field => {
+          field.classList.add('hidden');
+          field.textContent = '';
+        });
+
+        // Show errors under corresponding fields
+        validationResult.errors.forEach(error => {
+          let errorField;
+          if (error.includes('Website URL') || error.includes('Invalid URL') || 
+              error.includes('Invalid regex') || error.includes('Invalid wildcard')) {
+            errorField = document.getElementById('websiteUrl-error');
+          } else if (error.includes('Start time')) {
+            errorField = document.getElementById('startTime-error');
+          } else if (error.includes('End time')) {
+            errorField = document.getElementById('endTime-error');
+          } else if (error.includes('Daily time limit')) {
+            errorField = document.getElementById('dailyTimeLimit-error');
+          }
+
+          if (errorField) {
+            errorField.textContent = error;
+            errorField.classList.remove('hidden');
+          }
+        });
         return;
       }
+
+      // Clear any existing error messages on success
+      const errorFields = document.querySelectorAll('[id$="-error"]');
+      errorFields.forEach(field => {
+        field.classList.add('hidden');
+        field.textContent = '';
+      });
 
       if (form.dataset.editRuleId) {
         await StorageService.saveRule(rule);
@@ -377,7 +407,7 @@ function setupEventListeners() {
       await updateRuleLists();
     } catch (error) {
       console.error("Error saving rule:", error);
-      alert("Failed to save rule: " + error.message);
+      showErrorToast("Failed to save rule: " + error.message);
     }
   });
 }

@@ -51,8 +51,11 @@ function isValidUrl(url) {
 }
 
 export function validateRule(rule) {
+  const errors = [];
+
   if (!rule.websiteUrl) {
-    return VALIDATION_MESSAGES.WEBSITE_URL_REQUIRED;
+    errors.push(VALIDATION_MESSAGES.WEBSITE_URL_REQUIRED);
+    return { isValid: false, errors };
   }
 
   const websiteUrl = rule.websiteUrl.trim();
@@ -60,36 +63,39 @@ export function validateRule(rule) {
   // Check if it's a regex pattern
   if (websiteUrl.startsWith("/") && websiteUrl.endsWith("/")) {
     if (!isValidRegexPattern(websiteUrl)) {
-      return VALIDATION_MESSAGES.INVALID_REGEX;
+      errors.push(VALIDATION_MESSAGES.INVALID_REGEX);
     }
   }
   // Check if it's a wildcard pattern
   else if (websiteUrl.includes("*") || websiteUrl.includes("?")) {
     if (!isValidWildcardPattern(websiteUrl)) {
-      return VALIDATION_MESSAGES.INVALID_WILDCARD;
+      errors.push(VALIDATION_MESSAGES.INVALID_WILDCARD);
     }
   }
   // Regular URL validation
   else if (!isValidUrl(websiteUrl)) {
-    return VALIDATION_MESSAGES.INVALID_URL;
+    errors.push(VALIDATION_MESSAGES.INVALID_URL);
   }
 
   // Validate blocking mode specific fields
   if (rule.blockingMode === BLOCKING_MODES.TIME_RANGE) {
     if (!rule.startTime) {
-      return VALIDATION_MESSAGES.START_TIME_REQUIRED;
+      errors.push(VALIDATION_MESSAGES.START_TIME_REQUIRED);
     }
     if (!rule.endTime) {
-      return VALIDATION_MESSAGES.END_TIME_REQUIRED;
+      errors.push(VALIDATION_MESSAGES.END_TIME_REQUIRED);
     }
   } else {
     if (!rule.dailyTimeLimit) {
-      return VALIDATION_MESSAGES.DAILY_LIMIT_REQUIRED;
+      errors.push(VALIDATION_MESSAGES.DAILY_LIMIT_REQUIRED);
     }
     if (rule.dailyTimeLimit <= 0) {
-      return VALIDATION_MESSAGES.DAILY_LIMIT_POSITIVE;
+      errors.push(VALIDATION_MESSAGES.DAILY_LIMIT_POSITIVE);
     }
   }
 
-  return null;
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
 }

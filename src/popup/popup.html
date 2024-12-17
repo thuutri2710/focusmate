@@ -154,29 +154,45 @@
 
             <!-- All Rules Tab -->
             <div id="active-rules-content" class="tab-pane hidden">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-sm font-medium text-gray-700">All Blocking Rules</h2>
-                    <button id="removeAllRules"
-                        class="group relative inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-red-600 hover:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        Remove All
-                        <span
-                            class="absolute scale-0 group-hover:scale-100 transition-transform duration-200 -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap shadow-lg">
-                            This will delete all your rules
-                        </span>
-                    </button>
+                <div id="all-rules-header" class="mb-4">
+                    <h2 class="text-lg font-semibold text-gray-800">All Blocking Rules</h2>
                 </div>
-
                 <div id="allRulesList" class="space-y-4">
                     <!-- All rules will be populated here -->
                 </div>
+                <button id="removeAllRules" class="mt-4 text-sm text-red-600 hover:text-red-800 hidden">
+                    Remove all rules
+                </button>
             </div>
         </div>
 
     </div>
+
+    <!-- Confirmation Modal -->
+    <div id="delete-rule-modal"
+        class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl max-w-sm mx-4 p-6 transform transition-all">
+            <div class="text-center">
+                <svg class="mx-auto mb-4 w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                    </path>
+                </svg>
+                <h3 class="mb-4 text-md text-gray-800">Don't give up, remember your goals 💫</h3>
+                <div class="flex justify-center gap-4 mt-6">
+                    <button id="cancel-delete"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300">
+                        Keep Rule
+                    </button>
+                    <button id="confirm-delete"
+                        class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                        Remove Rule
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script type="module" src="./popup.js"></script>
 </body>
 

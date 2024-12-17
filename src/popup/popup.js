@@ -7,6 +7,7 @@ import { DOM_IDS, EVENTS, BLOCKING_MODES, TABS } from "../constants/index.js";
 import { TEMPLATES } from "../constants/templates.js";
 import { Analytics } from "../services/analytics.js";
 import { ANALYTICS_CONFIG } from "../config/analytics.js";
+import { showConfirmationModal } from "../utils/uiUtils.js";
 
 // Track current tab URL
 let currentTabUrl = "";
@@ -128,15 +129,18 @@ export async function loadRules() {
 async function loadActiveRules() {
   const allRulesList = document.getElementById(DOM_IDS.ALL_RULES_LIST);
   const removeAllRulesBtn = document.getElementById(DOM_IDS.REMOVE_ALL_RULES);
+  const allRulesHeader = document.getElementById("all-rules-header");
   allRulesList.innerHTML = "";
 
   if (!currentRules || currentRules.length === 0) {
     allRulesList.innerHTML = TEMPLATES.EMPTY_STATE.NO_RULES;
     removeAllRulesBtn.classList.add("hidden");
+    allRulesHeader.classList.add("hidden");
     return;
   }
 
-  // Show the Remove All Rules button when there are rules
+  // Show the header and Remove All Rules button when there are rules
+  allRulesHeader.classList.remove("hidden");
   removeAllRulesBtn.classList.remove("hidden");
 
   // Load time spent for each rule
@@ -206,9 +210,19 @@ async function loadActiveRules() {
     const deleteButton = ruleElement.querySelector(".delete-rule-btn");
     deleteButton?.addEventListener("click", async (e) => {
       e.stopPropagation();
-      await StorageService.deleteRule(rule.id);
-      Analytics.trackRuleDeletion(rule.blockingMode);
-      await updateRuleLists();
+      const confirmed = await showConfirmationModal();
+      if (confirmed === true) {
+        try {
+          await StorageService.deleteRule(rule.id);
+          showToast("Rule removed successfully");
+          Analytics.trackRuleDeletion(rule.blockingMode);
+          await updateRuleLists();
+        } catch (error) {
+          console.error("Error deleting rule:", error);
+          showToast(error.message || "Failed to delete rule", "error");
+        }
+      }
+      // Do nothing if not confirmed (keep rule)
     });
 
     // Add click handler for toggle button

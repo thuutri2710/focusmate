@@ -128,6 +128,48 @@ export function showToast(message, type = "success", duration = 1500) {
   }, duration);
 }
 
+/**
+ * Shows a confirmation modal and returns a promise that resolves with the user's choice
+ * @returns {Promise<boolean>} True if confirmed, false if cancelled
+ */
+export function showConfirmationModal() {
+  return new Promise((resolve) => {
+    const modal = document.getElementById("delete-rule-modal");
+    const confirmButton = document.getElementById("confirm-delete");
+    const cancelButton = document.getElementById("cancel-delete");
+
+    const handleConfirm = () => {
+      modal.classList.add("hidden");
+      cleanup();
+      resolve(true);
+    };
+
+    const handleCancel = () => {
+      modal.classList.add("hidden");
+      cleanup();
+      resolve(false);
+    };
+
+    const handleOutsideClick = (e) => {
+      if (e.target === modal) {
+        handleCancel();
+      }
+    };
+
+    const cleanup = () => {
+      confirmButton.removeEventListener("click", handleConfirm);
+      cancelButton.removeEventListener("click", handleCancel);
+      modal.removeEventListener("click", handleOutsideClick);
+    };
+
+    confirmButton.addEventListener("click", handleConfirm);
+    cancelButton.addEventListener("click", handleCancel);
+    modal.addEventListener("click", handleOutsideClick);
+
+    modal.classList.remove("hidden");
+  });
+}
+
 // Add necessary styles to document
 const style = document.createElement("style");
 style.textContent = `

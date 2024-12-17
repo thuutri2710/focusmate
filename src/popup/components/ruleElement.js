@@ -1,8 +1,8 @@
 export function createRuleElement(rule, isActiveView = false) {
   const div = document.createElement("div");
-  div.className = `p-4 rounded-lg shadow-sm transition-all ${
+  div.className = `p-4 rounded-lg shadow-sm transition-all duration-200 ${
     isActiveView
-      ? "bg-green-50 border border-green-200"
+      ? "bg-white border-l-4 border-l-green-500 hover:shadow-md"
       : "bg-white hover:bg-gray-50 border border-gray-200"
   }`;
   div.dataset.id = rule.id;
@@ -10,63 +10,91 @@ export function createRuleElement(rule, isActiveView = false) {
   // Format the redirect URL for display
   const redirectUrl = rule.redirectUrl || "https://www.google.com";
   const isStaticUrl = !redirectUrl.includes("*") && redirectUrl.startsWith("http");
+  const displayUrl = redirectUrl.length > 30 ? redirectUrl.substring(0, 27) + "..." : redirectUrl;
   const redirectDisplay = isStaticUrl
-    ? `<a href="${redirectUrl}" target="_blank" class="text-blue-600 hover:text-blue-800 hover:underline">${redirectUrl}</a>`
-    : `<span class="text-gray-700">${redirectUrl}</span>`;
+    ? `<a href="${redirectUrl}" title="${redirectUrl}" target="_blank" class="text-blue-600 hover:text-blue-800 hover:underline truncate max-w-[200px] inline-block align-bottom">${displayUrl}</a>`
+    : `<span class="text-gray-700 truncate max-w-[200px] inline-block align-bottom" title="${redirectUrl}">${displayUrl}</span>`;
 
   // Determine which time restriction is active and get time spent
   let statusBadge = "";
   let timeRestrictionText = "";
 
   if (rule.blockingMode === "timeRange") {
-    timeRestrictionText = `<span class="font-medium text-indigo-600">${rule.startTime} - ${rule.endTime}</span>`;
+    timeRestrictionText = `
+      <div class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
+        ${rule.startTime} - ${rule.endTime}
+      </div>`;
     if (isActiveView) {
       statusBadge =
-        '<span class="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">Time Range Active</span>';
+        '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Active Now</span>';
     }
   } else {
     const timeLeft = Math.max(0, rule.dailyTimeLimit - (rule.timeSpentToday || 0));
+    const progress = ((rule.timeSpentToday || 0) / rule.dailyTimeLimit) * 100;
+    const isOverLimit = rule.timeSpentToday >= rule.dailyTimeLimit;
+    const isNearLimit = progress >= 80 && !isOverLimit;
+    
     timeRestrictionText = `
-      <div class="flex flex-col">
-        <div class="text-sm">
-          <span class="text-gray-500">Time Limit:</span>
-          <span class="font-medium text-purple-600">${rule.dailyTimeLimit} minutes</span>
+      <div class="space-y-2">
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-gray-600">Daily Time Limit:</span>
+          <div class="flex items-center gap-1.5">
+            <span class="font-medium ${
+              isOverLimit ? 'text-red-600' : isNearLimit ? 'text-amber-600' : 'text-blue-600'
+            }">
+              ${rule.timeSpentToday || 0} / ${rule.dailyTimeLimit} mins
+            </span>
+            ${isNearLimit ? 
+              '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">Almost reached</span>' 
+              : ''}
+          </div>
         </div>
-        <div class="text-sm">
-          <span class="text-gray-500">Time Spent:</span>
-          <span class="font-medium ${
-            rule.timeSpentToday >= rule.dailyTimeLimit ? "text-red-600" : "text-green-600"
-          }">${rule.timeSpentToday || 0} minutes</span>
+        <div class="w-full bg-gray-100 rounded-full h-2">
+          <div class="h-2 rounded-full transition-all duration-300 ${
+            isOverLimit 
+              ? 'bg-gradient-to-r from-red-500 to-red-600' 
+              : isNearLimit
+                ? 'bg-gradient-to-r from-amber-500 to-amber-600'
+                : 'bg-gradient-to-r from-blue-500 to-blue-600'
+          }" style="width: ${Math.min(100, progress)}%"></div>
         </div>
       </div>`;
-    if (isActiveView && rule.timeSpentToday >= rule.dailyTimeLimit) {
-      statusBadge =
-        '<span class="text-xs px-2 py-1 bg-red-100 text-red-800 rounded-full">Limit Reached</span>';
+    
+    if (isActiveView) {
+      if (isOverLimit) {
+        statusBadge =
+          '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">Limit Reached</span>';
+      } else if (isNearLimit) {
+        statusBadge =
+          '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Near Limit</span>';
+      }
     }
   }
 
   div.innerHTML = `
-    <div class="flex justify-between items-start">
-      <div class="space-y-2 flex-grow">
+    <div class="flex justify-between items-start gap-4">
+      <div class="space-y-3 flex-grow min-w-0">
         <div class="flex items-center gap-2 flex-wrap">
-          <h3 class="font-medium text-gray-900">${rule.websiteUrl}</h3>
+          <h3 class="font-medium text-gray-900 truncate">${rule.websiteUrl}</h3>
           ${
             rule.websiteUrl.endsWith("/*")
-              ? '<span class="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">Pattern</span>'
+              ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">Pattern</span>'
               : ""
           }
           ${statusBadge}
         </div>
-        <div class="flex flex-col gap-1">
-          <p class="text-sm">
-            ${timeRestrictionText}
-          </p>
-          <p class="text-sm">
-            <span class="text-gray-500">Redirects to:</span> ${redirectDisplay}
+        <div class="space-y-2">
+          ${timeRestrictionText}
+          <p class="text-sm flex items-center gap-1.5 text-gray-500 min-w-0">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+            </svg>
+            <span class="flex-shrink-0">Redirects to:</span> 
+            ${redirectDisplay}
           </p>
         </div>
       </div>
-      <div class="flex gap-2">
+      <div class="flex gap-1.5">
         <button class="edit-rule-btn group relative p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-all duration-200">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -102,7 +130,7 @@ export function createRuleElement(rule, isActiveView = false) {
         emptyState.className = "text-center py-8 text-gray-500";
         emptyState.innerHTML = `
           <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v11a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
           <p>No rules added yet</p>
         `;

@@ -1,23 +1,49 @@
 import { StorageService } from "../services/storage.js";
 import { createRuleElement } from "./components/ruleElement.js";
 import { validateRule } from "../utils/validation.js";
+import { showToast } from "../utils/uiUtils.js";
+import { showErrorToast } from "../utils/uiUtils.js";
 import { DOM_IDS, EVENTS, BLOCKING_MODES, TABS } from "../constants/index.js";
 import { TEMPLATES } from "../constants/templates.js";
-import { showErrorToast } from "../utils/uiUtils.js";
 import { Analytics } from "../services/analytics.js";
 import { ANALYTICS_CONFIG } from "../config/analytics.js";
 
 // Track current tab URL
 let currentTabUrl = "";
 let currentRules = [];
+let updateInterval = null;
 
 // Track if we're coming from edit button click
 let isEditButtonClick = false;
+
+// Start the update interval when the popup opens
+function startUpdateInterval() {
+  // Clear any existing interval
+  if (updateInterval) {
+    clearInterval(updateInterval);
+  }
+
+  // Update rules immediately
+  updateRuleLists();
+
+  // Set up interval to update rules every minute
+  updateInterval = setInterval(updateRuleLists, 60000);
+}
+
+// Clean up interval when popup closes
+window.addEventListener("unload", () => {
+  if (updateInterval) {
+    clearInterval(updateInterval);
+  }
+});
 
 document.addEventListener(EVENTS.DOM_CONTENT_LOADED, async () => {
   // Initialize Analytics
   Analytics.init(ANALYTICS_CONFIG.MEASUREMENT_ID);
   Analytics.trackPopupOpen();
+
+  // Start update interval
+  startUpdateInterval();
 
   // Get current tab URL when popup opens
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -439,6 +465,7 @@ function setupEventListeners() {
         delete blockForm.dataset.editRuleId;
       } else {
         await StorageService.saveRule(rule);
+        showToast("Rule saved successfully!");
         Analytics.trackRuleCreation(rule.blockingMode);
       }
 
@@ -467,8 +494,8 @@ function setupEventListeners() {
       await updateRuleLists();
     } catch (error) {
       console.error("Error saving rule:", error);
-      Analytics.trackError("storage_error", error.message);
-      showErrorToast("Failed to save rule: " + error.message);
+      showToast(error.message || "Failed to save rule", "error");
+      Analytics.trackError("save_error", error.message);
     }
   });
 
@@ -481,56 +508,34 @@ function setupEventListeners() {
 }
 
 function handleTabSwitch(e) {
-  if (e.target.classList.contains("tab-button")) {
-    const tabId = e.target.getAttribute("data-tab");
-    Analytics.trackTabSwitch(tabId);
+  const tabButton = e.target.closest("[data-tab]");
+  if (!tabButton) return;
 
-    // Remove active classes from all tabs and content
-    document.querySelectorAll(".tab-button").forEach((tab) => {
-      tab.classList.remove("active", "border-blue-500", "text-blue-600");
-      tab.classList.add("border-transparent", "text-gray-500");
-    });
+  // Get the target content ID from the data-tab attribute
+  const targetId = tabButton.dataset.tab;
 
-    // Hide all tab panes except the selected one
-    document.querySelectorAll(".tab-pane").forEach((pane) => {
-      if (pane.id === tabId) {
-        pane.classList.remove("hidden");
-      } else {
-        pane.classList.add("hidden");
-      }
-    });
+  // Hide all tab content
+  document.querySelectorAll(".tab-pane").forEach((pane) => {
+    pane.classList.add("hidden");
+  });
 
-    // Add active classes to clicked tab
-    const button = e.target;
-    button.classList.remove("border-transparent", "text-gray-500");
-    button.classList.add("active", "border-blue-500", "text-blue-600");
+  // Show target content
+  document.getElementById(targetId).classList.remove("hidden");
 
-    // Reset form validation when switching to Add Rule tab
-    if (tabId === "add-rule-content") {
-      const blockForm = document.getElementById(DOM_IDS.BLOCK_FORM);
-      if (blockForm) {
-        // Remove error messages
-        const errorFields = blockForm.querySelectorAll(".error-message");
-        errorFields.forEach((field) => field.remove());
+  // Update button states
+  document.querySelectorAll(".tab-button").forEach((button) => {
+    button.classList.remove("border-blue-500", "text-blue-600");
+    button.classList.add("border-transparent", "text-gray-500");
+  });
 
-        // Clear error states from inputs
-        const inputs = blockForm.querySelectorAll("input");
-        inputs.forEach((input) => {
-          input.classList.remove("border-red-500", "focus:ring-red-500");
-          input.classList.remove("border-red-500");
-        });
+  tabButton.classList.remove("border-transparent", "text-gray-500");
+  tabButton.classList.add("border-blue-500", "text-blue-600");
 
-        // Reset validation error container
-        const validationErrors = document.getElementById("validation-errors");
-        if (validationErrors) {
-          validationErrors.innerHTML = "";
-          validationErrors.classList.add("hidden");
-        }
-
-        // Reset form fields
-        blockForm.reset();
-      }
-    }
+  // If switching to the applying rules tab, update the rules
+  if (targetId === TABS.CONTENT.CURRENT_PAGE) {
+    loadApplyingRules();
+  } else if (targetId === TABS.CONTENT.ALL_RULES) {
+    loadActiveRules();
   }
 }
 

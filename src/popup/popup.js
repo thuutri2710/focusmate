@@ -130,6 +130,7 @@ async function loadActiveRules() {
   const allRulesList = document.getElementById(DOM_IDS.ALL_RULES_LIST);
   const removeAllRulesBtn = document.getElementById(DOM_IDS.REMOVE_ALL_RULES);
   const allRulesHeader = document.getElementById("all-rules-header");
+  
   allRulesList.innerHTML = "";
 
   if (!currentRules || currentRules.length === 0) {
@@ -211,18 +212,19 @@ async function loadActiveRules() {
     deleteButton?.addEventListener("click", async (e) => {
       e.stopPropagation();
       const confirmed = await showConfirmationModal();
+      
       if (confirmed === true) {
         try {
           await StorageService.deleteRule(rule.id);
           showToast("Rule removed successfully");
           Analytics.trackRuleDeletion(rule.blockingMode);
-          await updateRuleLists();
+          await loadRules(); // Only reload if we actually deleted
         } catch (error) {
           console.error("Error deleting rule:", error);
           showToast(error.message || "Failed to delete rule", "error");
         }
       }
-      // Do nothing if not confirmed (keep rule)
+      // Don't reload if user cancelled
     });
 
     // Add click handler for toggle button

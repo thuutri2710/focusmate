@@ -139,14 +139,14 @@ export function showConfirmationModal() {
     const cancelButton = document.getElementById("cancel-delete");
 
     const handleConfirm = () => {
-      modal.classList.add("hidden");
       cleanup();
+      modal.classList.add("hidden");
       resolve(true);
     };
 
     const handleCancel = () => {
-      modal.classList.add("hidden");
       cleanup();
+      modal.classList.add("hidden");
       resolve(false);
     };
 
@@ -156,15 +156,23 @@ export function showConfirmationModal() {
       }
     };
 
+    const handleEscape = (e) => {
+      if (e.key === "Escape") {
+        handleCancel();
+      }
+    };
+
     const cleanup = () => {
       confirmButton.removeEventListener("click", handleConfirm);
       cancelButton.removeEventListener("click", handleCancel);
       modal.removeEventListener("click", handleOutsideClick);
+      document.removeEventListener("keydown", handleEscape);
     };
 
     confirmButton.addEventListener("click", handleConfirm);
     cancelButton.addEventListener("click", handleCancel);
     modal.addEventListener("click", handleOutsideClick);
+    document.addEventListener("keydown", handleEscape);
 
     modal.classList.remove("hidden");
   });

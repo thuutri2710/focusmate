@@ -132,6 +132,8 @@ function isRuleMatched(rule, normalizedUrl, timeSpent, currentTimeMinutes) {
 
 export const StorageService = {
   async getRules() {
+    // Force refresh the cache
+    rulesCache = null;
     return getRulesFromCache();
   },
 

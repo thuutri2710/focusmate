@@ -90,20 +90,5 @@ export function createRuleElement(rule, isActiveView = false) {
     });
   }
 
-  // Add click handler for delete button
-  const deleteButton = div.querySelector(".delete-rule-btn");
-  deleteButton?.addEventListener("click", async (e) => {
-    e.stopPropagation();
-    const ruleId = div.dataset.id;
-    try {
-      await StorageService.deleteRule(ruleId);
-      // Wait for the lists to be updated before dispatching the event
-      await loadRules();
-    } catch (error) {
-      console.error("Error deleting rule:", error);
-      showErrorToast("Failed to delete rule: " + error.message);
-    }
-  });
-
   return div;
 }

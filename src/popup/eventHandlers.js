@@ -95,9 +95,17 @@ export function setupFormHandler(onRuleUpdate) {
 
 function resetRuleForm() {
   const form = document.getElementById(DOM_IDS.BLOCK_FORM);
+  const urlInput = document.getElementById(DOM_IDS.WEBSITE_URL);
+  const currentUrl = urlInput.value; // Store current URL before reset
+  
   form.reset();
   delete form.dataset.editRuleId;
   document.querySelector(`#${DOM_IDS.BLOCK_FORM} button[type="submit"]`).textContent = MESSAGES.BUTTONS.ADD_RULE;
+  
+  // Restore the current URL after form reset
+  if (currentUrl) {
+    urlInput.value = currentUrl;
+  }
   
   // Reset blocking mode
   const event = new Event(EVENTS.CHANGE);

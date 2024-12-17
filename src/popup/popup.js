@@ -18,6 +18,12 @@ document.addEventListener(EVENTS.DOM_CONTENT_LOADED, async () => {
       currentTabUrl = tabs[0].url;
       document.getElementById(DOM_IDS.CURRENT_URL).textContent = currentTabUrl;
 
+      // Fill the website URL input field
+      const urlInput = document.getElementById(DOM_IDS.WEBSITE_URL);
+      if (urlInput) {
+        urlInput.value = currentTabUrl;
+      }
+
       // Add click handler to the parent div containing the link icon
       const currentUrlInfo = document.getElementById('currentUrlInfo');
       const iconContainer = currentUrlInfo.querySelector('svg');

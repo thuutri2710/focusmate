@@ -11,9 +11,6 @@ let currentRules = [];
 // Track if we're coming from edit button click
 let isEditButtonClick = false;
 
-// Event dispatcher for rule updates
-const ruleUpdateEvent = new Event(EVENTS.RULES_UPDATED);
-
 document.addEventListener(EVENTS.DOM_CONTENT_LOADED, async () => {
   // Get current tab URL when popup opens
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -27,12 +24,8 @@ document.addEventListener(EVENTS.DOM_CONTENT_LOADED, async () => {
   setupEventListeners();
 });
 
-// Listen for rule updates
-document.addEventListener(EVENTS.RULES_UPDATED, async () => {
-  await loadRules();
-});
-
-async function loadRules() {
+// Load all rules and update the UI
+export async function loadRules() {
   currentRules = await StorageService.getRules();
   await Promise.all([loadActiveRules(), loadApplyingRules()]);
 }
@@ -255,20 +248,20 @@ function setupEventListeners() {
   // Handle form submission
   document.getElementById(DOM_IDS.BLOCK_FORM).addEventListener(EVENTS.SUBMIT, async (e) => {
     e.preventDefault();
-    console.log('Form submitted');
+    console.log("Form submitted");
 
     const form = e.target;
     const websiteUrl = form.websiteUrl.value.trim();
     const redirectUrl = form.redirectUrl.value.trim();
     const blockingModeRadio = document.querySelector('input[name="blockingModeRadio"]:checked');
-    
+
     if (!blockingModeRadio) {
-      console.error('No blocking mode selected');
+      console.error("No blocking mode selected");
       return;
     }
-    
+
     const blockingMode = blockingModeRadio.value;
-    console.log('Form values:', { websiteUrl, redirectUrl, blockingMode });
+    console.log("Form values:", { websiteUrl, redirectUrl, blockingMode });
 
     const rule = {
       id: form.dataset.editRuleId || Date.now().toString(),
@@ -284,25 +277,25 @@ function setupEventListeners() {
       rule.dailyTimeLimit = parseInt(form.dailyTimeLimit.value);
     }
 
-    console.log('Rule to save:', rule);
+    console.log("Rule to save:", rule);
 
     try {
       // Validate rule before saving
       const validationResult = validateRule(rule);
       if (!validationResult.isValid) {
-        console.error('Validation failed:', validationResult.errors);
+        console.error("Validation failed:", validationResult.errors);
         // Display validation errors to user
-        const errorMessages = validationResult.errors.join('\n');
+        const errorMessages = validationResult.errors.join("\n");
         alert(errorMessages);
         return;
       }
 
       if (form.dataset.editRuleId) {
         await StorageService.saveRule(rule);
-        console.log('Rule updated');
+        console.log("Rule updated");
       } else {
         await StorageService.saveRule(rule);
-        console.log('Rule added');
+        console.log("Rule added");
       }
 
       // Reset form and switch to All Rules tab if we were editing
@@ -320,8 +313,8 @@ function setupEventListeners() {
 
       await updateRuleLists();
     } catch (error) {
-      console.error('Error saving rule:', error);
-      alert('Failed to save rule: ' + error.message);
+      console.error("Error saving rule:", error);
+      alert("Failed to save rule: " + error.message);
     }
   });
 }
@@ -382,25 +375,7 @@ function handleTabSwitch(e) {
 
 // Update both rule lists after changes
 async function updateRuleLists() {
-  document.dispatchEvent(ruleUpdateEvent);
-}
-
-// Modify rule deletion to update both lists
-async function deleteRule(ruleId) {
-  await StorageService.deleteRule(ruleId);
-  await updateRuleLists();
-}
-
-// Modify rule addition to update both lists
-async function addRule(rule) {
-  await StorageService.saveRule(rule);
-  await updateRuleLists();
-}
-
-// Modify rule update to update both lists
-async function updateRule(ruleId, updatedRule) {
-  await StorageService.saveRule(updatedRule);
-  await updateRuleLists();
+  await loadRules();
 }
 
 // Handle removing all rules

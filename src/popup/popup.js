@@ -174,10 +174,14 @@ async function loadApplyingRules() {
   if (applyingRules.length === 0) {
     applyingRulesList.innerHTML = TEMPLATES.EMPTY_STATE.NO_APPLYING_RULES;
 
-    // Add click handler for "Add rule" button
-    document.getElementById("addRuleForCurrent")?.addEventListener("click", () => {
+    document.getElementById(DOM_IDS.ADD_RULE_FOR_CURRENT)?.addEventListener("click", () => {
+      isEditButtonClick = true;
       document.getElementById(DOM_IDS.WEBSITE_URL).value = currentTabUrl;
       document.getElementById(DOM_IDS.ADD_RULE_TAB).click();
+
+      setTimeout(() => {
+        isEditButtonClick = false;
+      }, 100);
     });
   } else {
     // Sort rules by specificity (exact matches first, then pattern matches)
@@ -219,11 +223,9 @@ async function loadApplyingRules() {
 }
 
 function setupEventListeners() {
-  const tabButtons = document.querySelectorAll(".tab-button");
-
   // Handle tab switching
-  tabButtons.forEach((button) => {
-    button.addEventListener(EVENTS.CLICK, handleTabSwitch);
+  document.querySelectorAll("[data-tab]").forEach((tab) => {
+    tab.addEventListener(EVENTS.CLICK, handleTabSwitch);
   });
 
   // Handle blocking mode changes

@@ -47,6 +47,7 @@ export const DOM_IDS = {
   TIME_RANGE_FIELDS: "timeRangeFields",
   TIME_LIMIT_FIELDS: "timeLimitFields",
   REMOVE_ALL_RULES: "removeAllRules",
+  ADD_RULE_FOR_CURRENT: "addRuleForCurrent",
 };
 
 // CSS Classes

@@ -101,12 +101,17 @@ export async function loadRules() {
 
 async function loadActiveRules() {
   const allRulesList = document.getElementById(DOM_IDS.ALL_RULES_LIST);
+  const removeAllRulesBtn = document.getElementById(DOM_IDS.REMOVE_ALL_RULES);
   allRulesList.innerHTML = "";
 
   if (!currentRules || currentRules.length === 0) {
     allRulesList.innerHTML = TEMPLATES.EMPTY_STATE.NO_RULES;
+    removeAllRulesBtn.classList.add("hidden");
     return;
   }
+
+  // Show the Remove All Rules button when there are rules
+  removeAllRulesBtn.classList.remove("hidden");
 
   // Load time spent for each rule
   const updatedRules = await Promise.all(
@@ -366,7 +371,7 @@ function setupEventListeners() {
     if (blockingMode === BLOCKING_MODES.TIME_RANGE) {
       rule.startTime = formData.get("startTime") || "";
       rule.endTime = formData.get("endTime") || "";
-    } else if (blockingMode === BLOCKING_MODES.DAILY_LIMIT) {
+    } else if (blockingMode === BLOCKING_MODES.TIME_LIMIT) {
       rule.dailyTimeLimit = formData.get("dailyTimeLimit") || "";
     }
 
@@ -433,14 +438,14 @@ function setupEventListeners() {
         Analytics.trackRuleEdit(rule.blockingMode);
         delete blockForm.dataset.editRuleId;
       } else {
-        await StorageService.addRule(rule);
+        await StorageService.saveRule(rule);
         Analytics.trackRuleCreation(rule.blockingMode);
       }
 
       // Track time settings after successful save
       if (blockingMode === BLOCKING_MODES.TIME_RANGE) {
         Analytics.trackTimeRangeSet(`${rule.startTime}-${rule.endTime}`);
-      } else if (blockingMode === BLOCKING_MODES.DAILY_LIMIT) {
+      } else if (blockingMode === BLOCKING_MODES.TIME_LIMIT) {
         Analytics.trackTimeRangeSet(`daily-${rule.dailyTimeLimit}`);
       }
 

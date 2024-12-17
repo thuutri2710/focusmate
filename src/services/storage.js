@@ -10,6 +10,7 @@ async function getRulesFromCache() {
     rulesCache = result.blockRules || [];
     rulesCacheTimestamp = now;
   }
+
   return rulesCache;
 }
 
@@ -131,39 +132,39 @@ function isRuleMatched(rule, normalizedUrl, timeSpent, currentTimeMinutes) {
 
 export const StorageService = {
   async getRules() {
-    const rules = await getRulesFromCache();
-    return rules;
+    return getRulesFromCache();
   },
 
   async saveRule(rule) {
     const rules = await getRulesFromCache();
-    const existingIndex = rules.findIndex((r) => r.id === rule.id);
-    
-    if (existingIndex >= 0) {
+    const existingRuleIndex = rules.findIndex((r) => r.id === rule.id);
+
+    if (existingRuleIndex !== -1) {
       // Update existing rule
-      rules[existingIndex] = rule;
+      rules[existingRuleIndex] = rule;
     } else {
-      // Add new rule
+      // Add new rule with generated ID if not provided
+      if (!rule.id) {
+        rule.id = Date.now().toString();
+      }
       rules.push(rule);
     }
 
     await chrome.storage.local.set({ blockRules: rules });
     rulesCache = rules;
-    rulesCacheTimestamp = Date.now();
+    return rule;
   },
 
   async deleteRule(ruleId) {
     const rules = await getRulesFromCache();
-    const updatedRules = rules.filter((rule) => rule.id !== ruleId);
-    await chrome.storage.local.set({ blockRules: updatedRules });
-    rulesCache = updatedRules;
-    rulesCacheTimestamp = Date.now();
+    const newRules = rules.filter((rule) => rule.id !== ruleId);
+    await chrome.storage.local.set({ blockRules: newRules });
+    rulesCache = newRules;
   },
 
   async clearAllRules() {
     await chrome.storage.local.set({ blockRules: [] });
     rulesCache = [];
-    rulesCacheTimestamp = Date.now();
   },
 
   async cleanupOldTimeUsage() {
@@ -172,7 +173,7 @@ export const StorageService = {
 
     // Only keep today's data
     const cleanedTimeUsage = {
-      [today]: timeUsage[today] || {}
+      [today]: timeUsage[today] || {},
     };
 
     await chrome.storage.local.set({ timeUsage: cleanedTimeUsage });

@@ -149,8 +149,8 @@ export function createRuleElement(rule, isActiveView = false) {
       div.remove();
 
       // Check if this was the last rule
-      const activeRulesList = document.getElementById("activeRulesList");
-      if (activeRulesList.children.length === 0) {
+      const allRulesList = document.getElementById("allRulesList");
+      if (allRulesList.children.length === 0) {
         const emptyState = document.createElement("div");
         emptyState.className = "text-center py-8 text-gray-500";
         emptyState.innerHTML = `
@@ -159,7 +159,7 @@ export function createRuleElement(rule, isActiveView = false) {
           </svg>
           <p>No rules added yet</p>
         `;
-        activeRulesList.appendChild(emptyState);
+        allRulesList.appendChild(emptyState);
       }
     }
   });

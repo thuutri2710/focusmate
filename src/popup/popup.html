@@ -40,16 +40,21 @@
 
         <!-- Tab Navigation -->
         <div class="mb-4 border-b border-gray-200">
-            <nav class="-mb-px flex space-x-4" aria-label="Tabs">
+            <nav class="flex space-x-8 border-b border-gray-200" aria-label="Tabs">
                 <button id="add-rule-tab"
-                    class="tab-button active border-blue-500 text-blue-600 whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium"
+                    class="tab-button border-blue-500 text-blue-600 whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium"
                     data-tab="add-rule-content">
                     Add Rule
                 </button>
                 <button id="active-rules-tab"
                     class="tab-button border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium"
                     data-tab="active-rules-content">
-                    Active Rules
+                    All Rules
+                </button>
+                <button id="applying-rules-tab"
+                    class="tab-button border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium"
+                    data-tab="applying-rules-content">
+                    Current Page
                 </button>
             </nav>
         </div>
@@ -118,24 +123,47 @@
                 </form>
             </div>
 
-            <!-- Active Rules Tab -->
+            <!-- Applying Rules Tab -->
+            <div id="applying-rules-content" class="tab-pane hidden">
+                <div id="currentUrlInfo" class="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div class="flex items-center gap-2 text-sm text-gray-600">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                        <span class="font-medium">Current URL:</span>
+                        <span id="currentUrl" class="text-gray-900"></span>
+                    </div>
+                </div>
+
+                <div id="applyingRulesList" class="space-y-4">
+                    <!-- Applying rules will be populated here -->
+                </div>
+            </div>
+
+            <!-- All Rules Tab -->
             <div id="active-rules-content" class="tab-pane hidden">
                 <div class="flex justify-end mb-4">
-                    <button id="removeAllRules" 
-                            class="group relative inline-flex items-center gap-2 px-4 py-2 bg-white border border-red-300 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 hover:border-red-400 transition-all duration-200">
+                    <button id="removeAllRules"
+                        class="group relative inline-flex items-center gap-2 px-4 py-2 bg-white border border-red-300 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 hover:border-red-400 transition-all duration-200">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                         Remove All Rules
-                        <span class="absolute scale-0 group-hover:scale-100 transition-transform duration-200 -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">
+                        <span
+                            class="absolute scale-0 group-hover:scale-100 transition-transform duration-200 -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">
                             This will delete all your rules
                         </span>
                     </button>
                 </div>
-                <div id="activeRulesList" class="space-y-4">
-                    <!-- Active rules will be populated here -->
+
+                <div id="allRulesList" class="space-y-4">
+                    <!-- All rules will be populated here -->
                 </div>
             </div>
+
+
         </div>
 
     </div>

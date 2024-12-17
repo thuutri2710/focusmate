@@ -33,40 +33,65 @@ export function createRuleElement(rule, isActiveView = false) {
     const progress = ((rule.timeSpentToday || 0) / rule.dailyTimeLimit) * 100;
     const isOverLimit = rule.timeSpentToday >= rule.dailyTimeLimit;
     const isNearLimit = progress >= 80 && !isOverLimit;
-    
+
+    // Get color theme based on status
+    const getColorTheme = () => {
+      if (isOverLimit)
+        return {
+          text: "text-rose-600",
+          badge: "bg-rose-50 text-rose-700",
+          progress: "from-rose-500 to-rose-600",
+        };
+      if (isNearLimit)
+        return {
+          text: "text-orange-600",
+          badge: "bg-orange-50 text-orange-700",
+          progress: "from-orange-500 to-orange-600",
+        };
+      return {
+        text: "text-emerald-600",
+        badge: "bg-emerald-50 text-emerald-700",
+        progress: "from-emerald-500 to-emerald-600",
+      };
+    };
+
+    const colorTheme = getColorTheme();
+
     timeRestrictionText = `
       <div class="space-y-2">
         <div class="flex items-center justify-between text-sm">
           <span class="text-gray-600">Daily Time Limit:</span>
           <div class="flex items-center gap-1.5">
-            <span class="font-medium ${
-              isOverLimit ? 'text-red-600' : isNearLimit ? 'text-amber-600' : 'text-blue-600'
-            }">
-              ${rule.timeSpentToday || 0} / ${rule.dailyTimeLimit} mins
-            </span>
-            ${isNearLimit ? 
-              '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">Almost reached</span>' 
-              : ''}
+            <div class="font-medium flex items-baseline">
+              <span class="${colorTheme.text}">${rule.timeSpentToday || 0}</span>
+              <span class="text-gray-400 mx-1">/</span>
+              <span class="text-gray-700">${rule.dailyTimeLimit}</span>
+              <span class="text-gray-500 ml-1 text-xs">minutes</span>
+            </div>
+            ${
+              isNearLimit
+                ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                    colorTheme.badge
+                  }">
+                ${isOverLimit ? "Limit reached" : "Almost reached"}
+              </span>`
+                : ""
+            }
           </div>
         </div>
-        <div class="w-full bg-gray-100 rounded-full h-2">
-          <div class="h-2 rounded-full transition-all duration-300 ${
-            isOverLimit 
-              ? 'bg-gradient-to-r from-red-500 to-red-600' 
-              : isNearLimit
-                ? 'bg-gradient-to-r from-amber-500 to-amber-600'
-                : 'bg-gradient-to-r from-blue-500 to-blue-600'
-          }" style="width: ${Math.min(100, progress)}%"></div>
+        <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+          <div class="h-full rounded-full transition-all duration-300 bg-gradient-to-r ${
+            colorTheme.progress
+          }" 
+            style="width: ${Math.min(100, progress)}%"></div>
         </div>
       </div>`;
-    
+
     if (isActiveView) {
       if (isOverLimit) {
-        statusBadge =
-          '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">Limit Reached</span>';
+        statusBadge = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${colorTheme.badge}">Limit Reached</span>`;
       } else if (isNearLimit) {
-        statusBadge =
-          '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Near Limit</span>';
+        statusBadge = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${colorTheme.badge}">Near Limit</span>`;
       }
     }
   }
@@ -150,10 +175,12 @@ export function createRuleElement(rule, isActiveView = false) {
     // Fill form with rule data
     document.getElementById("websiteUrl").value = rule.websiteUrl;
     document.getElementById("redirectUrl").value = rule.redirectUrl || "";
-    
+
     // Set blocking mode radio button
-    document.querySelector(`input[name="blockingMode"][value="${rule.blockingMode}"]`).checked = true;
-    
+    document.querySelector(
+      `input[name="blockingMode"][value="${rule.blockingMode}"]`
+    ).checked = true;
+
     // Show/hide appropriate fields based on blocking mode
     const timeRangeFields = document.getElementById("timeRangeFields");
     const dailyLimitFields = document.getElementById("dailyLimitFields");

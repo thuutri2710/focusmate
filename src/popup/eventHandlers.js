@@ -1,13 +1,14 @@
 import { RuleService } from '../services/ruleService.js';
 import { validateRule } from '../utils/validation.js';
-import { showElement, hideElement, setElementValue, getElementValue, clearElementValue } from '../utils/domUtils.js';
+import { showElement, hideElement, getElementValue } from '../utils/domUtils.js';
 import { 
   DOM_IDS, 
   BLOCKING_MODES, 
   EVENTS, 
   ATTRIBUTES, 
   CSS_CLASSES,
-  MESSAGES 
+  MESSAGES,
+  TABS 
 } from '../constants/index.js';
 
 export function setupBlockingModeHandler() {
@@ -47,7 +48,7 @@ export function setupTabSwitchHandler() {
       });
 
       // Reset form when switching to Add Rule tab
-      if (targetId === 'add-rule-panel') {
+      if (targetId === TABS.CONTENT.ADD_RULE) {
         resetRuleForm();
       }
     });

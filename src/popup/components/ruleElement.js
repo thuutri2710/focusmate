@@ -1,3 +1,6 @@
+import { BLOCKING_MODES } from "../../constants/index.js";
+import { TEMPLATES } from "../../constants/templates.js";
+
 export function createRuleElement(rule, isActiveView = false) {
   const div = document.createElement("div");
   div.className = `p-4 rounded-lg shadow-sm transition-all duration-200 ${
@@ -19,14 +22,13 @@ export function createRuleElement(rule, isActiveView = false) {
   let statusBadge = "";
   let timeRestrictionText = "";
 
-  if (rule.blockingMode === "timeRange") {
-    timeRestrictionText = `
-      <div class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
-        ${rule.startTime} - ${rule.endTime}
-      </div>`;
+  if (rule.blockingMode === BLOCKING_MODES.TIME_RANGE) {
+    timeRestrictionText = TEMPLATES.RULE_TEMPLATES.TIME_BADGE(rule.startTime, rule.endTime);
     if (isActiveView) {
-      statusBadge =
-        '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Active Now</span>';
+      statusBadge = TEMPLATES.RULE_TEMPLATES.STATUS_BADGE(
+        TEMPLATES.RULE_TEMPLATES.COLOR_THEMES.NORMAL,
+        "Active Now"
+      );
     }
   } else {
     const timeLeft = Math.max(0, rule.dailyTimeLimit - (rule.timeSpentToday || 0));
@@ -35,63 +37,25 @@ export function createRuleElement(rule, isActiveView = false) {
     const isNearLimit = progress >= 80 && !isOverLimit;
 
     // Get color theme based on status
-    const getColorTheme = () => {
-      if (isOverLimit)
-        return {
-          text: "text-rose-600",
-          badge: "bg-rose-50 text-rose-700",
-          progress: "from-rose-500 to-rose-600",
-        };
-      if (isNearLimit)
-        return {
-          text: "text-orange-600",
-          badge: "bg-orange-50 text-orange-700",
-          progress: "from-orange-500 to-orange-600",
-        };
-      return {
-        text: "text-emerald-600",
-        badge: "bg-emerald-50 text-emerald-700",
-        progress: "from-emerald-500 to-emerald-600",
-      };
-    };
+    const colorTheme = isOverLimit
+      ? TEMPLATES.RULE_TEMPLATES.COLOR_THEMES.OVER_LIMIT
+      : isNearLimit
+      ? TEMPLATES.RULE_TEMPLATES.COLOR_THEMES.NEAR_LIMIT
+      : TEMPLATES.RULE_TEMPLATES.COLOR_THEMES.NORMAL;
 
-    const colorTheme = getColorTheme();
-
-    timeRestrictionText = `
-      <div class="space-y-2">
-        <div class="flex items-center justify-between text-sm">
-          <span class="text-gray-600">Daily Time Limit:</span>
-          <div class="flex items-center gap-1.5">
-            <div class="font-medium flex items-baseline">
-              <span class="${colorTheme.text}">${rule.timeSpentToday || 0}</span>
-              <span class="text-gray-400 mx-1">/</span>
-              <span class="text-gray-700">${rule.dailyTimeLimit}</span>
-              <span class="text-gray-500 ml-1 text-xs">minutes</span>
-            </div>
-            ${
-              isNearLimit
-                ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                    colorTheme.badge
-                  }">
-                ${isOverLimit ? "Limit reached" : "Almost reached"}
-              </span>`
-                : ""
-            }
-          </div>
-        </div>
-        <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-          <div class="h-full rounded-full transition-all duration-300 bg-gradient-to-r ${
-            colorTheme.progress
-          }" 
-            style="width: ${Math.min(100, progress)}%"></div>
-        </div>
-      </div>`;
+    timeRestrictionText = TEMPLATES.RULE_TEMPLATES.TIME_LIMIT_SECTION(
+      rule,
+      colorTheme,
+      isNearLimit,
+      isOverLimit
+    );
 
     if (isActiveView) {
-      if (isOverLimit) {
-        statusBadge = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${colorTheme.badge}">Limit Reached</span>`;
-      } else if (isNearLimit) {
-        statusBadge = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${colorTheme.badge}">Near Limit</span>`;
+      if (isOverLimit || isNearLimit) {
+        statusBadge = TEMPLATES.RULE_TEMPLATES.STATUS_BADGE(
+          colorTheme,
+          isOverLimit ? "Limit Reached" : "Near Limit"
+        );
       }
     }
   }
@@ -99,110 +63,20 @@ export function createRuleElement(rule, isActiveView = false) {
   div.innerHTML = `
     <div class="flex justify-between items-start gap-4">
       <div class="space-y-3 flex-grow min-w-0">
-        <div class="flex items-center gap-2 flex-wrap">
-          <h3 class="font-medium text-gray-900 truncate">${rule.websiteUrl}</h3>
-          ${
-            rule.websiteUrl.endsWith("/*")
-              ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">Pattern</span>'
-              : ""
-          }
-          ${statusBadge}
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <h3 class="text-sm font-medium text-gray-900 truncate">${rule.websiteUrl}</h3>
+            ${statusBadge}
+          </div>
+          ${TEMPLATES.RULE_TEMPLATES.RULE_ACTIONS}
         </div>
-        <div class="space-y-2">
-          ${timeRestrictionText}
-          <p class="text-sm flex items-center gap-1.5 text-gray-500 min-w-0">
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-            </svg>
-            <span class="flex-shrink-0">Redirects to:</span> 
-            ${redirectDisplay}
-          </p>
+        <div class="text-sm text-gray-500">
+          Redirect to: ${redirectDisplay}
         </div>
-      </div>
-      <div class="flex gap-1.5">
-        <button class="edit-rule-btn group relative p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-all duration-200">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
-          <span class="absolute scale-0 group-hover:scale-100 transition-transform duration-200 -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">
-            Edit rule
-          </span>
-        </button>
-        <button class="delete-rule-btn group relative p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-all duration-200">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-          <span class="absolute scale-0 group-hover:scale-100 transition-transform duration-200 -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">
-            Delete rule
-          </span>
-        </button>
+        ${timeRestrictionText}
       </div>
     </div>
   `;
-
-  // Add click handler for delete button
-  const deleteButton = div.querySelector(".delete-rule-btn");
-  deleteButton.addEventListener("click", async (e) => {
-    e.stopPropagation();
-    if (window.confirm("Are you sure you want to delete this rule?")) {
-      await StorageService.deleteRule(rule.id);
-      div.remove();
-
-      // Check if this was the last rule
-      const allRulesList = document.getElementById("allRulesList");
-      if (allRulesList.children.length === 0) {
-        const emptyState = document.createElement("div");
-        emptyState.className = "text-center py-8 text-gray-500";
-        emptyState.innerHTML = `
-          <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-          <p>No rules added yet</p>
-        `;
-        allRulesList.appendChild(emptyState);
-      }
-    }
-  });
-
-  // Add click handler for edit button
-  const editButton = div.querySelector(".edit-rule-btn");
-  editButton.addEventListener("click", (e) => {
-    e.stopPropagation();
-
-    // Switch to Add Rule tab
-    document.getElementById("add-rule-tab").click();
-
-    // Fill form with rule data
-    document.getElementById("websiteUrl").value = rule.websiteUrl;
-    document.getElementById("redirectUrl").value = rule.redirectUrl || "";
-
-    // Set blocking mode radio button
-    document.querySelector(
-      `input[name="blockingMode"][value="${rule.blockingMode}"]`
-    ).checked = true;
-
-    // Show/hide appropriate fields based on blocking mode
-    const timeRangeFields = document.getElementById("timeRangeFields");
-    const dailyLimitFields = document.getElementById("dailyLimitFields");
-
-    if (rule.blockingMode === "timeRange") {
-      timeRangeFields.classList.remove("hidden");
-      dailyLimitFields.classList.add("hidden");
-      document.getElementById("startTime").value = rule.startTime;
-      document.getElementById("endTime").value = rule.endTime;
-    } else {
-      timeRangeFields.classList.add("hidden");
-      dailyLimitFields.classList.remove("hidden");
-      document.getElementById("dailyTimeLimit").value = rule.dailyTimeLimit;
-    }
-
-    // Store the rule ID for updating
-    const form = document.getElementById("blockForm");
-    form.dataset.editRuleId = rule.id;
-
-    // Update submit button text
-    document.querySelector('#blockForm button[type="submit"]').textContent = "Update blocking rule";
-  });
 
   // Add click handler for links
   if (isStaticUrl) {

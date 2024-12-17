@@ -2,6 +2,7 @@ import { StorageService } from "../services/storage.js";
 import { createRuleElement } from "./components/ruleElement.js";
 import { validateRule } from "../utils/validation.js";
 import { DOM_IDS, EVENTS } from "../constants/index.js";
+import { TEMPLATES } from "../constants/templates.js";
 
 // Track current tab URL
 let currentTabUrl = '';
@@ -41,16 +42,7 @@ async function loadActiveRules() {
   allRulesList.innerHTML = "";
 
   if (!currentRules || currentRules.length === 0) {
-    const emptyState = document.createElement("div");
-    emptyState.className = "text-center py-8 text-gray-500";
-    emptyState.innerHTML = `
-      <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M12 13h.01M12 18a6 6 0 100-12 6 6 0 000 12z" />
-      </svg>
-      <p>No rules yet</p>
-      <p class="text-sm mt-2">Add your first rule to get started</p>
-    `;
-    allRulesList.appendChild(emptyState);
+    allRulesList.innerHTML = TEMPLATES.EMPTY_STATE.NO_RULES;
     return;
   }
 
@@ -134,11 +126,7 @@ async function loadApplyingRules() {
 
   const currentUrlParts = getUrlParts(currentTabUrl);
   if (!currentUrlParts) {
-    applyingRulesList.innerHTML = `
-      <div class="text-center py-4 text-gray-500">
-        <p>Invalid URL format</p>
-      </div>
-    `;
+    applyingRulesList.innerHTML = TEMPLATES.EMPTY_STATE.INVALID_URL;
     return;
   }
 
@@ -172,18 +160,7 @@ async function loadApplyingRules() {
   });
 
   if (applyingRules.length === 0) {
-    const emptyState = document.createElement("div");
-    emptyState.className = "text-center py-8 text-gray-500";
-    emptyState.innerHTML = `
-      <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M12 13h.01M12 18a6 6 0 100-12 6 6 0 000 12z" />
-      </svg>
-      <p>No rules apply to this page</p>
-      <button id="addRuleForCurrent" class="mt-4 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline">
-        Add rule for this page
-      </button>
-    `;
-    applyingRulesList.appendChild(emptyState);
+    applyingRulesList.innerHTML = TEMPLATES.EMPTY_STATE.NO_APPLYING_RULES;
 
     // Add click handler for "Add rule" button
     document.getElementById('addRuleForCurrent')?.addEventListener('click', () => {
@@ -218,15 +195,10 @@ async function loadApplyingRules() {
       
       // Add match type indicator
       if (rule.matchType === 'pattern') {
-        const matchIndicator = document.createElement('div');
-        matchIndicator.className = 'text-xs text-gray-500 mt-2 flex items-center gap-1';
-        matchIndicator.innerHTML = `
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-          Pattern match
-        `;
-        ruleElement.querySelector('.space-y-2')?.appendChild(matchIndicator);
+        const container = ruleElement.querySelector('.space-y-2');
+        if (container) {
+          container.insertAdjacentHTML('beforeend', TEMPLATES.PATTERN_MATCH_INDICATOR);
+        }
       }
       
       applyingRulesList.appendChild(ruleElement);

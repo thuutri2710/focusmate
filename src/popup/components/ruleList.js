@@ -1,6 +1,5 @@
 import { createRuleElement } from './ruleElement.js';
-import { createEmptyStateElement } from '../../utils/domUtils.js';
-import { DOM_IDS } from '../../constants/index.js';
+import { EMPTY_STATES } from '../../constants/templates.js';
 
 export class RuleList {
   constructor(containerId, isActiveView = false) {
@@ -14,7 +13,7 @@ export class RuleList {
 
   renderEmptyState() {
     this.clear();
-    this.container.appendChild(createEmptyStateElement());
+    this.container.innerHTML = this.isActiveView ? EMPTY_STATES.NO_APPLYING_RULES : EMPTY_STATES.NO_RULES;
   }
 
   renderRules(rules) {

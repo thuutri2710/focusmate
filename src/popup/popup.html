@@ -43,18 +43,18 @@
             <nav class="flex space-x-8 border-b border-gray-200" aria-label="Tabs">
                 <button id="add-rule-tab"
                     class="tab-button border-blue-500 text-blue-600 whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium"
-                    data-tab="add-rule-content">
+                    data-tab="add-rule-content" role="tab" aria-controls="add-rule-content" aria-selected="true">
                     Add Rule
-                </button>
-                <button id="active-rules-tab"
-                    class="tab-button border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium"
-                    data-tab="active-rules-content">
-                    All Rules
                 </button>
                 <button id="applying-rules-tab"
                     class="tab-button border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium"
-                    data-tab="applying-rules-content">
+                    data-tab="applying-rules-content" role="tab" aria-controls="applying-rules-content" aria-selected="false">
                     Current Page
+                </button>
+                <button id="active-rules-tab"
+                    class="tab-button border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium"
+                    data-tab="active-rules-content" role="tab" aria-controls="active-rules-content" aria-selected="false">
+                    All Rules
                 </button>
             </nav>
         </div>

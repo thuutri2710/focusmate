@@ -17,6 +17,59 @@ document.addEventListener(EVENTS.DOM_CONTENT_LOADED, async () => {
     if (tabs[0]) {
       currentTabUrl = tabs[0].url;
       document.getElementById(DOM_IDS.CURRENT_URL).textContent = currentTabUrl;
+
+      // Add click handler to the parent div containing the link icon
+      const currentUrlInfo = document.getElementById('currentUrlInfo');
+      const iconContainer = currentUrlInfo.querySelector('svg');
+      const originalIcon = `
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+      `;
+      
+      const successIcon = `
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+      `;
+      
+      const errorIcon = `
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      `;
+      
+      // Make the icon look clickable
+      iconContainer.style.cursor = 'pointer';
+      
+      // Add hover effect
+      iconContainer.addEventListener('mouseenter', () => {
+        iconContainer.style.color = '#4B5563'; // text-gray-700
+      });
+      
+      iconContainer.addEventListener('mouseleave', () => {
+        iconContainer.style.color = '#4B5563'; // text-gray-600
+      });
+
+      // Add click handler for copying
+      iconContainer.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(currentTabUrl);
+          // Show success icon
+          iconContainer.style.stroke = '#059669';
+          iconContainer.innerHTML = successIcon;
+          setTimeout(() => {
+            iconContainer.style.stroke = 'currentColor';
+            iconContainer.innerHTML = originalIcon;
+          }, 1000);
+        } catch (err) {
+          console.error('Failed to copy URL:', err);
+          // Show error icon
+          iconContainer.style.stroke = '#DC2626';
+          iconContainer.innerHTML = errorIcon;
+          setTimeout(() => {
+            iconContainer.style.stroke = 'currentColor';
+            iconContainer.innerHTML = originalIcon;
+          }, 1000);
+        }
+      });
     }
   });
 
@@ -255,7 +308,9 @@ function setupEventListeners() {
     const form = e.target;
     const websiteUrl = form.websiteUrl.value.trim();
     const redirectUrl = form.redirectUrl.value.trim();
-    const blockingModeRadio = document.querySelector('input[name="blockingModeRadio"]:checked');
+    const blockingModeRadio = document.querySelector(
+      'input[name="blockingModeRadio"]:checked'
+    );
 
     if (!blockingModeRadio) {
       console.error("No blocking mode selected");

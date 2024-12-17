@@ -44,6 +44,7 @@ export const DOM_IDS = {
 
   // Other Elements
   CURRENT_URL: "currentUrl",
+  COPY_URL_BUTTON: "copyUrlButton",
   TIME_RANGE_FIELDS: "timeRangeFields",
   TIME_LIMIT_FIELDS: "timeLimitFields",
   REMOVE_ALL_RULES: "removeAllRules",

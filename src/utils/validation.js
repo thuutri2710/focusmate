@@ -1,3 +1,22 @@
+import { BLOCKING_MODES } from '../constants/index.js';
+
+const URL_PATTERNS = {
+  PROTOCOL: /^https?:\/\//,
+  BASIC: /^[a-zA-Z0-9][a-zA-Z0-9-_.]*\.[a-zA-Z]{2,}(\/[^\s]*)?\/?$/,
+  WILDCARD_TLD: /^[*?]+$/
+};
+
+const VALIDATION_MESSAGES = {
+  WEBSITE_URL_REQUIRED: 'Website URL is required',
+  INVALID_REGEX: 'Invalid regular expression pattern',
+  INVALID_WILDCARD: 'Invalid wildcard pattern',
+  INVALID_URL: 'Invalid URL format',
+  START_TIME_REQUIRED: 'Start time is required for time range blocking',
+  END_TIME_REQUIRED: 'End time is required for time range blocking',
+  DAILY_LIMIT_REQUIRED: 'Daily time limit is required for time limit blocking',
+  DAILY_LIMIT_POSITIVE: 'Daily time limit must be a positive number'
+};
+
 function isValidRegexPattern(pattern) {
   // Check if pattern is enclosed in forward slashes
   if (!pattern.startsWith("/") || !pattern.endsWith("/")) {
@@ -20,24 +39,20 @@ function isValidWildcardPattern(pattern) {
 
   // Check TLD isn't just wildcards
   const tld = parts[parts.length - 1];
-  if (tld.length < 2 || /^[*?]+$/.test(tld)) return false;
+  if (tld.length < 2 || URL_PATTERNS.WILDCARD_TLD.test(tld)) return false;
 
   return true;
 }
 
 function isValidUrl(url) {
   // Remove protocol if present
-  const urlWithoutProtocol = url.replace(/^https?:\/\//, "");
-
-  // Basic URL pattern (allows subdomains and paths)
-  const urlPattern = /^[a-zA-Z0-9][a-zA-Z0-9-_.]*\.[a-zA-Z]{2,}(\/[^\s]*)?\/?$/;
-  console.log(urlPattern, urlWithoutProtocol, url);
-  return urlPattern.test(urlWithoutProtocol);
+  const urlWithoutProtocol = url.replace(URL_PATTERNS.PROTOCOL, "");
+  return URL_PATTERNS.BASIC.test(urlWithoutProtocol);
 }
 
 export function validateRule(rule) {
   if (!rule.websiteUrl) {
-    return "Website URL is required";
+    return VALIDATION_MESSAGES.WEBSITE_URL_REQUIRED;
   }
 
   const websiteUrl = rule.websiteUrl.trim();
@@ -45,62 +60,34 @@ export function validateRule(rule) {
   // Check if it's a regex pattern
   if (websiteUrl.startsWith("/") && websiteUrl.endsWith("/")) {
     if (!isValidRegexPattern(websiteUrl)) {
-      return "Invalid regular expression pattern";
+      return VALIDATION_MESSAGES.INVALID_REGEX;
     }
   }
   // Check if it's a wildcard pattern
   else if (websiteUrl.includes("*") || websiteUrl.includes("?")) {
     if (!isValidWildcardPattern(websiteUrl)) {
-      return "Invalid wildcard pattern";
+      return VALIDATION_MESSAGES.INVALID_WILDCARD;
     }
   }
   // Regular URL validation
-  else {
-    // Handle URLs with or without protocol
-    let urlToValidate = websiteUrl.startsWith("https") ? websiteUrl : `https://${websiteUrl}`;
-    urlToValidate = websiteUrl.startsWith("http") ? websiteUrl : `http://${websiteUrl}`;
-    console.log(urlToValidate, websiteUrl);
-    try {
-      new URL(urlToValidate);
-      if (!isValidUrl(websiteUrl)) {
-        return "Invalid website URL format";
-      }
-    } catch (e) {
-      return "Invalid website URL format";
+  else if (!isValidUrl(websiteUrl)) {
+    return VALIDATION_MESSAGES.INVALID_URL;
+  }
+
+  // Validate blocking mode specific fields
+  if (rule.blockingMode === BLOCKING_MODES.TIME_RANGE) {
+    if (!rule.startTime) {
+      return VALIDATION_MESSAGES.START_TIME_REQUIRED;
     }
-  }
-
-  if (rule.redirectUrl && !rule.redirectUrl.startsWith("http")) {
-    return "Redirect URL must start with http:// or https://";
-  }
-
-  // Check if either time range or daily limit is provided, but not both
-  const hasTimeRange = rule.startTime && rule.endTime;
-  const hasDailyLimit = rule.dailyTimeLimit;
-
-  if (!hasTimeRange && !hasDailyLimit) {
-    return "Please set either a time range or a daily time limit";
-  }
-
-  if (hasTimeRange && hasDailyLimit) {
-    return "Cannot set both time range and daily time limit";
-  }
-
-  // Validate time range if provided
-  if (hasTimeRange) {
-    const [startHour, startMinute] = rule.startTime.split(":").map(Number);
-    const [endHour, endMinute] = rule.endTime.split(":").map(Number);
-
-    if (startHour > endHour || (startHour === endHour && startMinute >= endMinute)) {
-      return "End time must be after start time";
+    if (!rule.endTime) {
+      return VALIDATION_MESSAGES.END_TIME_REQUIRED;
     }
-  }
-
-  // Validate daily time limit if provided
-  if (hasDailyLimit) {
-    const limit = Number(rule.dailyTimeLimit);
-    if (isNaN(limit) || limit <= 0 || !Number.isInteger(limit)) {
-      return "Daily time limit must be a positive integer";
+  } else {
+    if (!rule.dailyTimeLimit) {
+      return VALIDATION_MESSAGES.DAILY_LIMIT_REQUIRED;
+    }
+    if (rule.dailyTimeLimit <= 0) {
+      return VALIDATION_MESSAGES.DAILY_LIMIT_POSITIVE;
     }
   }
 

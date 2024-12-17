@@ -1,20 +1,21 @@
 import { StorageService } from "../services/storage.js";
 import { createRuleElement } from "./components/ruleElement.js";
 import { validateRule } from "../utils/validation.js";
+import { DOM_IDS, EVENTS } from "../constants/index.js";
 
 // Track current tab URL
 let currentTabUrl = '';
 let currentRules = [];
 
 // Event dispatcher for rule updates
-const ruleUpdateEvent = new Event('rulesUpdated');
+const ruleUpdateEvent = new Event(EVENTS.RULES_UPDATED);
 
-document.addEventListener("DOMContentLoaded", async () => {
+document.addEventListener(EVENTS.DOM_CONTENT_LOADED, async () => {
   // Get current tab URL when popup opens
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (tabs[0]) {
       currentTabUrl = tabs[0].url;
-      document.getElementById('currentUrl').textContent = currentTabUrl;
+      document.getElementById(DOM_IDS.CURRENT_URL).textContent = currentTabUrl;
     }
   });
 
@@ -23,7 +24,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 // Listen for rule updates
-document.addEventListener('rulesUpdated', async () => {
+document.addEventListener(EVENTS.RULES_UPDATED, async () => {
   await loadRules();
 });
 
@@ -36,7 +37,7 @@ async function loadRules() {
 }
 
 async function loadActiveRules() {
-  const allRulesList = document.getElementById("allRulesList");
+  const allRulesList = document.getElementById(DOM_IDS.ALL_RULES_LIST);
   allRulesList.innerHTML = "";
 
   if (!currentRules || currentRules.length === 0) {
@@ -74,28 +75,28 @@ async function loadActiveRules() {
       e.stopPropagation();
 
       // Switch to Add Rule tab
-      document.getElementById("add-rule-tab").click();
+      document.getElementById(DOM_IDS.ADD_RULE_TAB).click();
 
       // Fill form with rule data
-      document.getElementById("websiteUrl").value = rule.websiteUrl;
-      document.getElementById("redirectUrl").value = rule.redirectUrl || "";
-      document.getElementById("blockingMode").value = rule.blockingMode;
+      document.getElementById(DOM_IDS.WEBSITE_URL).value = rule.websiteUrl;
+      document.getElementById(DOM_IDS.REDIRECT_URL).value = rule.redirectUrl || "";
+      document.getElementById(DOM_IDS.BLOCKING_MODE).value = rule.blockingMode;
       handleBlockingModeChange({ target: { value: rule.blockingMode } });
 
       // Show/hide appropriate fields based on blocking mode
       if (rule.blockingMode === "timeRange") {
-        document.getElementById("startTime").value = rule.startTime;
-        document.getElementById("endTime").value = rule.endTime;
+        document.getElementById(DOM_IDS.START_TIME).value = rule.startTime;
+        document.getElementById(DOM_IDS.END_TIME).value = rule.endTime;
       } else {
-        document.getElementById("dailyTimeLimit").value = rule.dailyTimeLimit;
+        document.getElementById(DOM_IDS.DAILY_TIME_LIMIT).value = rule.dailyTimeLimit;
       }
 
       // Store the rule ID for updating
-      const form = document.getElementById("blockForm");
+      const form = document.getElementById(DOM_IDS.BLOCK_FORM);
       form.dataset.editRuleId = rule.id;
 
       // Update submit button text
-      document.querySelector('#blockForm button[type="submit"]').textContent =
+      document.querySelector(`#${DOM_IDS.BLOCK_FORM} button[type="submit"]`).textContent =
         "Update blocking rule";
     });
   });
@@ -104,7 +105,7 @@ async function loadActiveRules() {
 async function loadApplyingRules() {
   if (!currentTabUrl) return;
 
-  const applyingRulesList = document.getElementById("applyingRulesList");
+  const applyingRulesList = document.getElementById(DOM_IDS.APPLYING_RULES_LIST);
   applyingRulesList.innerHTML = "";
 
   // Helper function to convert URL pattern to regex
@@ -186,8 +187,8 @@ async function loadApplyingRules() {
 
     // Add click handler for "Add rule" button
     document.getElementById('addRuleForCurrent')?.addEventListener('click', () => {
-      document.getElementById('websiteUrl').value = currentTabUrl;
-      document.getElementById('add-rule-tab').click();
+      document.getElementById(DOM_IDS.WEBSITE_URL).value = currentTabUrl;
+      document.getElementById(DOM_IDS.ADD_RULE_TAB).click();
     });
   } else {
     // Sort rules by specificity (exact matches first, then pattern matches)
@@ -238,14 +239,14 @@ function setupEventListeners() {
 
   // Handle tab switching
   tabButtons.forEach((button) => {
-    button.addEventListener("click", handleTabSwitch);
+    button.addEventListener(EVENTS.CLICK, handleTabSwitch);
   });
 
   // Handle blocking mode changes
   document.querySelectorAll('input[name="blockingMode"]').forEach((radio) => {
-    radio.addEventListener("change", (e) => {
-      const timeRangeFields = document.getElementById("timeRangeFields");
-      const dailyLimitFields = document.getElementById("dailyLimitFields");
+    radio.addEventListener(EVENTS.CHANGE, (e) => {
+      const timeRangeFields = document.getElementById(DOM_IDS.TIME_RANGE_FIELDS);
+      const dailyLimitFields = document.getElementById(DOM_IDS.DAILY_LIMIT_FIELDS);
 
       if (e.target.value === "timeRange") {
         timeRangeFields.classList.remove("hidden");
@@ -258,7 +259,7 @@ function setupEventListeners() {
   });
 
   // Handle form submission
-  document.getElementById("blockForm").addEventListener("submit", async (e) => {
+  document.getElementById(DOM_IDS.BLOCK_FORM).addEventListener(EVENTS.SUBMIT, async (e) => {
     e.preventDefault();
 
     const form = e.target;
@@ -289,13 +290,13 @@ function setupEventListeners() {
     // Reset form and switch to All Rules tab if we were editing
     if (form.dataset.editRuleId) {
       form.dataset.editRuleId = "";
-      document.getElementById("active-rules-tab").click();
+      document.getElementById(DOM_IDS.ACTIVE_RULES_TAB).click();
     }
 
     e.target.reset();
 
     // Reset submit button text
-    document.querySelector('#blockForm button[type="submit"]').textContent = "Add blocking rule";
+    document.querySelector(`#${DOM_IDS.BLOCK_FORM} button[type="submit"]`).textContent = "Add blocking rule";
 
     // Reset to default time range mode
     handleBlockingModeChange({ target: { value: "timeRange" } });
@@ -327,26 +328,26 @@ function handleTabSwitch(e) {
   tabContent.classList.remove("hidden");
 
   // Refresh the active rules list if switching to that tab
-  if (tabId === "active-rules-content") {
+  if (tabId === DOM_IDS.ACTIVE_RULES_CONTENT) {
     loadActiveRules();
   }
 }
 
 function handleBlockingModeChange(e) {
-  const timeRangeInputs = document.getElementById("timeRangeInputs");
-  const dailyLimitInputs = document.getElementById("dailyLimitInputs");
+  const timeRangeInputs = document.getElementById(DOM_IDS.TIME_RANGE_INPUTS);
+  const dailyLimitInputs = document.getElementById(DOM_IDS.DAILY_LIMIT_INPUTS);
 
   if (e.target.value === "timeRange") {
     timeRangeInputs.classList.remove("hidden");
     dailyLimitInputs.classList.add("hidden");
     // Clear daily limit input
-    document.getElementById("dailyTimeLimit").value = "";
+    document.getElementById(DOM_IDS.DAILY_TIME_LIMIT).value = "";
   } else {
     timeRangeInputs.classList.add("hidden");
     dailyLimitInputs.classList.remove("hidden");
     // Clear time range inputs
-    document.getElementById("startTime").value = "";
-    document.getElementById("endTime").value = "";
+    document.getElementById(DOM_IDS.START_TIME).value = "";
+    document.getElementById(DOM_IDS.END_TIME).value = "";
   }
 }
 
@@ -374,7 +375,7 @@ async function updateRule(ruleId, updatedRule) {
 }
 
 // Handle removing all rules
-document.getElementById("removeAllRules").addEventListener("click", async () => {
+document.getElementById(DOM_IDS.REMOVE_ALL_RULES).addEventListener(EVENTS.CLICK, async () => {
   await StorageService.clearAllRules();
   await updateRuleLists();
 });

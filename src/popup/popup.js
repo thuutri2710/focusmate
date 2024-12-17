@@ -1,7 +1,7 @@
 import { StorageService } from "../services/storage.js";
 import { createRuleElement } from "./components/ruleElement.js";
 import { validateRule } from "../utils/validation.js";
-import { DOM_IDS, EVENTS, BLOCKING_MODES } from "../constants/index.js";
+import { DOM_IDS, EVENTS, BLOCKING_MODES, TABS } from "../constants/index.js";
 import { TEMPLATES } from "../constants/templates.js";
 import { showErrorToast } from "../utils/uiUtils.js";
 import { Analytics } from "../services/analytics.js";
@@ -480,47 +480,45 @@ function handleTabSwitch(e) {
       tab.classList.add("border-transparent", "text-gray-500");
     });
 
+    // Hide all tab panes except the selected one
     document.querySelectorAll(".tab-pane").forEach((pane) => {
-      pane.classList.add("hidden");
+      if (pane.id === tabId) {
+        pane.classList.remove("hidden");
+      } else {
+        pane.classList.add("hidden");
+      }
     });
 
     // Add active classes to clicked tab
-    const button = e.currentTarget;
-
+    const button = e.target;
     button.classList.remove("border-transparent", "text-gray-500");
     button.classList.add("active", "border-blue-500", "text-blue-600");
 
-    // Show selected content
-    const tabContent = document.getElementById(tabId);
-    tabContent.classList.remove("hidden");
+    // Reset form validation when switching to Add Rule tab
+    if (tabId === "add-rule-content") {
+      const blockForm = document.getElementById(DOM_IDS.BLOCK_FORM);
+      if (blockForm) {
+        // Remove error messages
+        const errorFields = blockForm.querySelectorAll(".error-message");
+        errorFields.forEach((field) => field.remove());
 
-    // Reset form when switching to Active Rules tab or Add Rule tab (unless coming from edit button)
-    if (
-      tabId === DOM_IDS.ACTIVE_RULES_CONTENT ||
-      (tabId === DOM_IDS.ADD_RULE_CONTENT && !isEditButtonClick)
-    ) {
-      const form = document.getElementById(DOM_IDS.BLOCK_FORM);
-      form.reset();
-      form.dataset.editRuleId = "";
+        // Clear error states from inputs
+        const inputs = blockForm.querySelectorAll('input');
+        inputs.forEach(input => {
+          input.classList.remove('border-red-500', 'focus:ring-red-500');
+          input.classList.remove('border-red-500');
+        });
 
-      // Reset radio button to Time Range and show/hide appropriate fields
-      const timeRangeRadio = document.querySelector(
-        'input[name="blockingModeRadio"][value="timeRange"]'
-      );
-      if (timeRangeRadio) {
-        timeRangeRadio.checked = true;
-        document.getElementById(DOM_IDS.TIME_RANGE_FIELDS).classList.remove("hidden");
-        document.getElementById(DOM_IDS.TIME_LIMIT_FIELDS).classList.add("hidden");
+        // Reset validation error container
+        const validationErrors = document.getElementById('validation-errors');
+        if (validationErrors) {
+          validationErrors.innerHTML = '';
+          validationErrors.classList.add('hidden');
+        }
+
+        // Reset form fields
+        blockForm.reset();
       }
-
-      // Reset submit button text
-      document.querySelector(`#${DOM_IDS.BLOCK_FORM} button[type="submit"]`).textContent =
-        "Add blocking rule";
-    }
-
-    // Load active rules if switching to that tab
-    if (tabId === DOM_IDS.ACTIVE_RULES_CONTENT) {
-      loadActiveRules();
     }
   }
 }

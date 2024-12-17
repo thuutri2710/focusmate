@@ -218,10 +218,13 @@ function setupEventListeners() {
   });
 
   // Handle blocking mode changes
-  document.querySelectorAll('input[name="blockingMode"]').forEach((radio) => {
+  document.querySelectorAll('input[name="blockingModeRadio"]').forEach((radio) => {
     radio.addEventListener(EVENTS.CHANGE, (e) => {
       const timeRangeFields = document.getElementById(DOM_IDS.TIME_RANGE_FIELDS);
       const timeLimitFields = document.getElementById(DOM_IDS.TIME_LIMIT_FIELDS);
+      
+      // Update the blockingMode container's value
+      document.getElementById(DOM_IDS.BLOCKING_MODE).setAttribute('value', e.target.value);
 
       if (e.target.value === BLOCKING_MODES.TIME_RANGE) {
         timeRangeFields.classList.remove("hidden");
@@ -240,7 +243,7 @@ function setupEventListeners() {
     const form = e.target;
     const websiteUrl = form.websiteUrl.value.trim();
     const redirectUrl = form.redirectUrl.value.trim();
-    const blockingMode = form.blockingMode.value;
+    const blockingMode = document.querySelector('input[name="blockingModeRadio"]:checked').value;
 
     const rule = {
       id: form.dataset.editRuleId || Date.now().toString(),
@@ -302,24 +305,6 @@ function handleTabSwitch(e) {
   // Refresh the active rules list if switching to that tab
   if (tabId === DOM_IDS.ACTIVE_RULES_CONTENT) {
     loadActiveRules();
-  }
-}
-
-function handleBlockingModeChange(e) {
-  const timeRangeInputs = document.getElementById(DOM_IDS.TIME_RANGE_INPUTS);
-  const dailyLimitInputs = document.getElementById(DOM_IDS.DAILY_LIMIT_INPUTS);
-
-  if (e.target.value === "timeRange") {
-    timeRangeInputs.classList.remove("hidden");
-    dailyLimitInputs.classList.add("hidden");
-    // Clear daily limit input
-    document.getElementById(DOM_IDS.DAILY_TIME_LIMIT).value = "";
-  } else {
-    timeRangeInputs.classList.add("hidden");
-    dailyLimitInputs.classList.remove("hidden");
-    // Clear time range inputs
-    document.getElementById(DOM_IDS.START_TIME).value = "";
-    document.getElementById(DOM_IDS.END_TIME).value = "";
   }
 }
 

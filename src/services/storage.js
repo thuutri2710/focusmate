@@ -97,20 +97,24 @@ function isWithinTimeRange(currentMinutes, startTime, endTime) {
 }
 
 function isRuleMatched(rule, normalizedDomain, timeSpent, currentTimeMinutes) {
+  if (!matchDomainPattern(normalizedDomain, extractDomain(rule.websiteUrl))) {
+    return false;
+  }
+
   // Check time range if specified
   if (rule.startTime && rule.endTime) {
-    if (!isWithinTimeRange(currentTimeMinutes, rule.startTime, rule.endTime)) {
-      return false;
+    if (isWithinTimeRange(currentTimeMinutes, rule.startTime, rule.endTime)) {
+      return true;
     }
   }
 
   // Check time limit if specified
   if (rule.timeLimit && timeSpent >= rule.timeLimit) {
+    console.log("Time limit exceeded for rule:", rule);
     return true;
   }
 
-  // Match domain pattern
-  return matchDomainPattern(normalizedDomain, extractDomain(rule.websiteUrl));
+  return false;
 }
 
 const STORAGE_KEYS = {
@@ -290,10 +294,6 @@ export const StorageService = {
     // Group rules by type for efficient checking
     const { exact, wildcard, regexp } = groupRulesByType(rules);
 
-    console.log("Rules grouped by type:", {
-      rule,
-      timeSpentMinutes,
-    });
     // Check each type of rule
     for (const rule of [...exact, ...wildcard, ...regexp]) {
       if (isRuleMatched(rule, normalizedDomain, timeSpentMinutes, getCurrentTimeInMinutes())) {

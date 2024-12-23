@@ -2,109 +2,52 @@ import { BLOCKING_MODES } from "../constants/index.js";
 
 const URL_PATTERNS = {
   PROTOCOL: /^https?:\/\//,
-  BASIC: /^[a-zA-Z0-9][a-zA-Z0-9-_.]*\.[a-zA-Z]{2,}(\/[^\s]*)?\/?$/,
-  WILDCARD_TLD: /^[*?]+$/,
+  DOMAIN: /^[a-zA-Z0-9][a-zA-Z0-9-_.]*\.[a-zA-Z]{2,}$/,
+  WILDCARD_DOMAIN: /^\*\.[a-zA-Z0-9][a-zA-Z0-9-_.]*\.[a-zA-Z]{2,}$/
 };
 
 const VALIDATION_MESSAGES = {
   WEBSITE_URL_REQUIRED: "Website URL is required",
-  INVALID_REGEX: "Invalid regular expression pattern",
-  INVALID_WILDCARD: "Invalid wildcard pattern",
-  INVALID_URL: "Invalid URL format",
+  INVALID_URL: "Invalid domain format. Use domain.com or *.domain.com",
   START_TIME_REQUIRED: "Start time is required for time range blocking",
   END_TIME_REQUIRED: "End time is required for time range blocking",
   DAILY_LIMIT_REQUIRED: "Daily time limit is required for time limit blocking",
-  DAILY_LIMIT_POSITIVE: "Daily time limit must be a positive number",
+  DAILY_LIMIT_POSITIVE: "Daily time limit must be a positive number"
 };
 
-function isValidRegexPattern(pattern) {
-  // Check if pattern is enclosed in forward slashes
-  if (!pattern.startsWith("/") || !pattern.endsWith("/")) {
-    return false;
+function isValidDomainPattern(domain) {
+  const domainWithoutProtocol = domain.replace(URL_PATTERNS.PROTOCOL, "");
+  
+  if (domainWithoutProtocol.startsWith("*.")) {
+    return URL_PATTERNS.WILDCARD_DOMAIN.test(domainWithoutProtocol);
   }
-
-  // Try to create a RegExp object with the pattern
-  try {
-    new RegExp(pattern.slice(1, -1));
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
-
-function isValidWildcardPattern(pattern) {
-  // Allow * and ? wildcards, but ensure basic URL structure
-  const parts = pattern.split(".");
-  if (parts.length < 2) return false;
-
-  // Check TLD isn't just wildcards
-  const tld = parts[parts.length - 1];
-  if (tld.length < 2 || URL_PATTERNS.WILDCARD_TLD.test(tld)) return false;
-
-  return true;
-}
-
-function isValidUrl(url) {
-  // Remove protocol if present
-  const urlWithoutProtocol = url.replace(URL_PATTERNS.PROTOCOL, "");
-  return URL_PATTERNS.BASIC.test(urlWithoutProtocol);
+  
+  return URL_PATTERNS.DOMAIN.test(domainWithoutProtocol);
 }
 
 export function validateRule(rule) {
   const errors = [];
-  const fieldErrors = {};
 
-  // Website URL validation
   if (!rule.websiteUrl) {
     errors.push(VALIDATION_MESSAGES.WEBSITE_URL_REQUIRED);
-    fieldErrors.websiteUrl = VALIDATION_MESSAGES.WEBSITE_URL_REQUIRED;
-  } else {
-    const websiteUrl = rule.websiteUrl.trim();
-
-    // Check if it's a regex pattern
-    if (websiteUrl.startsWith("/") && websiteUrl.endsWith("/")) {
-      if (!isValidRegexPattern(websiteUrl)) {
-        errors.push(VALIDATION_MESSAGES.INVALID_REGEX);
-        fieldErrors.websiteUrl = VALIDATION_MESSAGES.INVALID_REGEX;
-      }
-    }
-    // Check if it's a wildcard pattern
-    else if (websiteUrl.includes("*") || websiteUrl.includes("?")) {
-      if (!isValidWildcardPattern(websiteUrl)) {
-        errors.push(VALIDATION_MESSAGES.INVALID_WILDCARD);
-        fieldErrors.websiteUrl = VALIDATION_MESSAGES.INVALID_WILDCARD;
-      }
-    }
-    // Regular URL validation
-    else if (!isValidUrl(websiteUrl)) {
-      errors.push(VALIDATION_MESSAGES.INVALID_URL);
-      fieldErrors.websiteUrl = VALIDATION_MESSAGES.INVALID_URL;
-    }
+  } else if (!isValidDomainPattern(rule.websiteUrl)) {
+    errors.push(VALIDATION_MESSAGES.INVALID_URL);
   }
 
-  // Validate blocking mode specific fields
   if (rule.blockingMode === BLOCKING_MODES.TIME_RANGE) {
     if (!rule.startTime) {
       errors.push(VALIDATION_MESSAGES.START_TIME_REQUIRED);
-      fieldErrors.startTime = VALIDATION_MESSAGES.START_TIME_REQUIRED;
     }
     if (!rule.endTime) {
       errors.push(VALIDATION_MESSAGES.END_TIME_REQUIRED);
-      fieldErrors.endTime = VALIDATION_MESSAGES.END_TIME_REQUIRED;
     }
   } else if (rule.blockingMode === BLOCKING_MODES.DAILY_LIMIT) {
     if (!rule.dailyTimeLimit) {
       errors.push(VALIDATION_MESSAGES.DAILY_LIMIT_REQUIRED);
-      fieldErrors.dailyTimeLimit = VALIDATION_MESSAGES.DAILY_LIMIT_REQUIRED;
     } else if (rule.dailyTimeLimit <= 0) {
       errors.push(VALIDATION_MESSAGES.DAILY_LIMIT_POSITIVE);
-      fieldErrors.dailyTimeLimit = VALIDATION_MESSAGES.DAILY_LIMIT_POSITIVE;
     }
   }
 
-  return {
-    isValid: errors.length === 0,
-    errors,
-    fieldErrors,
-  };
+  return errors;
 }

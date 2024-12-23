@@ -1,3 +1,5 @@
+import { extractDomain } from "../utils/urlUtils.js";
+
 // Cache for rules to avoid frequent storage reads
 let rulesCache = null;
 let rulesCacheTimestamp = 0;
@@ -14,19 +16,19 @@ async function getRulesFromCache() {
   return rulesCache;
 }
 
+function matchDomainPattern(domain, pattern) {
+  // If pattern starts with *., it's a wildcard domain pattern
+  if (pattern.startsWith("*.")) {
+    const patternDomain = pattern.slice(2); // Remove *. prefix
+    return domain.endsWith(patternDomain);
+  }
+
+  // Otherwise, exact domain match
+  return domain === pattern;
+}
+
 function normalizeUrl(url) {
-  // Add protocol if missing
-  if (!url.startsWith("http://") && !url.startsWith("https://")) {
-    url = "https://" + url;
-  }
-  try {
-    const urlObj = new URL(url);
-    // Return the full URL including pathname for wildcard and regex matching
-    return urlObj.toString().replace(/\/$/, ""); // Remove trailing slash
-  } catch (e) {
-    // If URL is invalid or contains wildcards/regex, return as is
-    return url;
-  }
+  return extractDomain(url);
 }
 
 function isWildcardPattern(pattern) {
@@ -94,40 +96,21 @@ function isWithinTimeRange(currentMinutes, startTime, endTime) {
   return currentMinutes >= range.start && currentMinutes <= range.end;
 }
 
-function checkExactMatch(normalizedUrl, pattern) {
-  const normalizedPattern = normalizeUrl(pattern);
-  return normalizedUrl.toLowerCase() === normalizedPattern.toLowerCase();
-}
-
-function isRuleMatched(rule, normalizedUrl, timeSpent, currentTimeMinutes) {
-  // Check if URL matches the rule pattern
-  let matches = false;
-  const rulePattern = rule.websiteUrl;
-
-  if (isRegExpPattern(rulePattern)) {
-    matches = matchesRegExp(normalizedUrl, rulePattern);
-  } else if (isWildcardPattern(rulePattern)) {
-    matches = matchesWildcard(normalizedUrl, rulePattern);
-  } else {
-    // For exact matches, normalize both URLs and compare case-insensitively
-    const normalizedPattern = normalizeUrl(rulePattern);
-    matches = normalizedUrl.toLowerCase() === normalizedPattern.toLowerCase();
+function isRuleMatched(rule, normalizedDomain, timeSpent, currentTimeMinutes) {
+  // Check time range if specified
+  if (rule.startTime && rule.endTime) {
+    if (!isWithinTimeRange(currentTimeMinutes, rule.startTime, rule.endTime)) {
+      return false;
+    }
   }
 
-  if (!matches) return false;
-
-  // If there's a daily time limit and it's exceeded, block the URL
-  if (rule.dailyTimeLimit && timeSpent >= rule.dailyTimeLimit) {
+  // Check time limit if specified
+  if (rule.timeLimit && timeSpent >= rule.timeLimit) {
     return true;
   }
 
-  // If there's a time range and we're within it, block the URL
-  if (rule.startTime && rule.endTime) {
-    return isWithinTimeRange(currentTimeMinutes, rule.startTime, rule.endTime);
-  }
-
-  // If there's no time limit or range specified but URL matches, block it
-  return !rule.dailyTimeLimit && !rule.startTime && !rule.endTime;
+  // Match domain pattern
+  return matchDomainPattern(normalizedDomain, extractDomain(rule.websiteUrl));
 }
 
 const STORAGE_KEYS = {
@@ -275,8 +258,8 @@ export const StorageService = {
 
   async isUrlBlocked(url) {
     const rules = await this.getRules();
-    const normalizedUrl = normalizeUrl(url);
-    const timeSpentMs = await this.getTimeSpentToday(normalizedUrl);
+    const normalizedDomain = normalizeUrl(url);
+    const timeSpentMs = await this.getTimeSpentToday(normalizedDomain);
     const timeSpentMinutes = timeSpentMs / (1000 * 60); // Convert to minutes for rule checking
 
     // Group rules by type for efficient checking
@@ -284,7 +267,7 @@ export const StorageService = {
 
     // Check each type of rule
     for (const rule of [...exact, ...wildcard, ...regexp]) {
-      if (isRuleMatched(rule, normalizedUrl, timeSpentMinutes, getCurrentTimeInMinutes())) {
+      if (isRuleMatched(rule, normalizedDomain, timeSpentMinutes, getCurrentTimeInMinutes())) {
         return rule;
       }
     }

@@ -26,20 +26,23 @@ async function clearCurrentTracking() {
 
 // Function to start tracking a tab
 function startTrackingTab(tabId, url) {
+  // Extract domain from URL
+  const domain = StorageService.extractDomain(url);
+  
   // Set up new tracking for this tab
   activeTabTimes.set(tabId, {
-    url,
+    url: domain, // Store domain instead of full URL
     lastUpdate: Date.now(),
   });
 
   // Create new interval for this tab (check every second)
   activeInterval = setInterval(() => {
-    checkTabRules(tabId, url);
+    checkTabRules(tabId, domain);
   }, 1000);
 }
 
 // Function to check rules and update time for a specific tab
-async function checkTabRules(tabId, url) {
+async function checkTabRules(tabId, domain) {
   // Only count time if window is focused
   if (!isWindowFocused) {
     return;
@@ -55,22 +58,22 @@ async function checkTabRules(tabId, url) {
   const intervalMs = now - tabInfo.lastUpdate;
 
   // Get current accumulated time and add the new interval
-  const currentTimeSpent = await StorageService.getTimeSpentToday(url);
+  const currentTimeSpent = await StorageService.getTimeSpentToday(domain);
   const newTimeSpent = currentTimeSpent + intervalMs;
 
   // Store the total accumulated time
-  await StorageService.updateTimeUsage(url, newTimeSpent);
+  await StorageService.updateTimeUsage(domain, newTimeSpent);
 
   // Update the last update time for next interval
   tabInfo.lastUpdate = now;
   activeTabTimes.set(tabId, tabInfo);
 
   // Check if URL should be blocked based on current conditions
-  const blockedRule = await StorageService.isUrlBlocked(url);
+  const blockedRule = await StorageService.isUrlBlocked(domain);
   if (blockedRule) {
     try {
       const currentTab = await chrome.tabs.get(tabId);
-      if (currentTab && currentTab.url === url) {
+      if (currentTab && currentTab.url.includes(domain)) {
         chrome.tabs.update(tabId, {
           url: blockedRule.redirectUrl || "https://www.google.com",
         });
@@ -101,38 +104,47 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
 
 // Handle when a tab becomes active
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
-  // Clear current tracking regardless of window focus
+  // Get the new active tab's info
+  const newTab = await chrome.tabs.get(activeInfo.tabId);
+  
+  // Update final time for previous tab and clear interval
   await clearCurrentTracking();
 
-  // Only start new tracking if window is focused
-  if (!isWindowFocused) {
-    return;
-  }
-
-  // Start tracking the newly activated tab
-  const tab = await chrome.tabs.get(activeInfo.tabId);
-  if (tab.url) {
-    startTrackingTab(tab.id, tab.url);
+  // Only start new tracking if window is focused and tab has a URL
+  if (isWindowFocused && newTab.url) {
+    startTrackingTab(newTab.id, newTab.url);
   }
 });
 
 // Handle tab URL updates
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (changeInfo.url) {
-    // If this is the active tab and window is focused, update tracking
-    const activeTab = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-    if (activeTab[0]?.id === tabId && isWindowFocused) {
-      await clearCurrentTracking();
-      startTrackingTab(tabId, changeInfo.url);
-    }
+  // Only care about URL changes
+  if (!changeInfo.url) return;
+
+  // Check if this is the active tab
+  const activeTabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  const isActiveTab = activeTabs[0]?.id === tabId;
+
+  // If this is the active tab and window is focused, update tracking
+  if (isActiveTab && isWindowFocused) {
+    await clearCurrentTracking();
+    startTrackingTab(tabId, changeInfo.url);
   }
 });
 
 // Handle tab close
 chrome.tabs.onRemoved.addListener(async (tabId) => {
-  // If this was the active tab, clear tracking
+  // Only clear tracking if this was the tracked tab
   if (activeTabTimes.has(tabId)) {
     await clearCurrentTracking();
+    
+    // If window is still focused, start tracking the new active tab
+    if (isWindowFocused) {
+      const activeTabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+      if (activeTabs[0]?.url) {
+        startTrackingTab(activeTabs[0].id, activeTabs[0].url);
+      }
+    }
   }
 });
 

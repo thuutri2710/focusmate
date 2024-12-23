@@ -8,6 +8,7 @@ import { TEMPLATES } from "../constants/templates.js";
 import { Analytics } from "../services/analytics.js";
 import { ANALYTICS_CONFIG } from "../config/analytics.js";
 import { showConfirmationModal } from "../utils/uiUtils.js";
+import { extractDomain } from "../utils/urlUtils.js";
 
 // Track current tab URL
 let currentTabUrl = "";
@@ -485,12 +486,13 @@ async function updateRuleLists() {
 // Set up initial UI state
 async function setupUI() {
   if (currentTabUrl) {
+    // Show full URL in the display area
     document.getElementById(DOM_IDS.CURRENT_URL).textContent = currentTabUrl;
 
-    // Fill the website URL input field
+    // Fill the website URL input field with just the domain
     const urlInput = document.getElementById(DOM_IDS.WEBSITE_URL);
     if (urlInput) {
-      urlInput.value = currentTabUrl;
+      urlInput.value = extractDomain(currentTabUrl);
       Analytics.trackUrlAutofill();
     }
 

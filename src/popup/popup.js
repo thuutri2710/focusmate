@@ -51,6 +51,11 @@ document.addEventListener(EVENTS.DOM_CONTENT_LOADED, async () => {
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tabs[0]) {
       currentTabUrl = tabs[0].url;
+      // Set tooltip
+      const currentUrlElement = document.getElementById(DOM_IDS.CURRENT_URL);
+      if (currentUrlElement) {
+        currentUrlElement.title = currentTabUrl;
+      }
     }
 
     // Initial setup

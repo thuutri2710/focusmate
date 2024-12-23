@@ -4,7 +4,7 @@ import { StorageService } from "../../services/storage.js";
 import { loadRules } from "../popup.js";
 import { showErrorToast } from "../../utils/uiUtils.js";
 
-export function createRuleElement(rule, isActiveView = false) {
+export async function createRuleElement(rule, isActiveView = false) {
   const div = document.createElement("div");
   div.className = `p-4 rounded-lg shadow-sm transition-all duration-200 ${
     isActiveView
@@ -34,9 +34,13 @@ export function createRuleElement(rule, isActiveView = false) {
       );
     }
   } else {
-    const timeLeft = Math.max(0, rule.dailyTimeLimit - (rule.timeSpentToday || 0));
-    const progress = ((rule.timeSpentToday || 0) / rule.dailyTimeLimit) * 100;
-    const isOverLimit = rule.timeSpentToday >= rule.dailyTimeLimit;
+    // Get time spent directly from storage
+    const timeSpentMs = await StorageService.getTimeSpentToday(rule.websiteUrl);
+    console.log("timeSpentMs", timeSpentMs);
+    const timeSpentMinutes = Math.floor(timeSpentMs / (1000 * 60)); // Convert ms to minutes
+    const timeLeft = Math.max(0, rule.dailyTimeLimit - timeSpentMinutes);
+    const progress = (timeSpentMinutes / rule.dailyTimeLimit) * 100;
+    const isOverLimit = timeSpentMinutes >= rule.dailyTimeLimit;
     const isNearLimit = progress >= 80 && !isOverLimit;
 
     // Get color theme based on status
@@ -50,7 +54,8 @@ export function createRuleElement(rule, isActiveView = false) {
       rule,
       colorTheme,
       isNearLimit,
-      isOverLimit
+      isOverLimit,
+      timeSpentMinutes
     );
 
     if (isActiveView) {
@@ -76,7 +81,7 @@ export function createRuleElement(rule, isActiveView = false) {
         <div class="text-sm text-gray-500">
           Redirect to: ${redirectDisplay}
         </div>
-        ${timeRestrictionText}
+        ${timeRestrictionText || ""}
       </div>
     </div>
   `;

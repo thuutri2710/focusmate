@@ -27,8 +27,10 @@ function startUpdateInterval() {
   // Update rules immediately
   updateRuleLists();
 
-  // Set up interval to update rules every minute
-  updateInterval = setInterval(updateRuleLists, 60000);
+  // Set up interval to update rules every 30 seconds
+  updateInterval = setInterval(() => {
+    updateRuleLists();
+  }, 30000);
 }
 
 // Clean up interval when popup closes
@@ -39,85 +41,28 @@ window.addEventListener("unload", () => {
 });
 
 document.addEventListener(EVENTS.DOM_CONTENT_LOADED, async () => {
-  // Initialize Analytics
-  Analytics.init(ANALYTICS_CONFIG.MEASUREMENT_ID);
-  Analytics.trackPopupOpen();
+  try {
+    // Initialize Analytics
+    Analytics.init(ANALYTICS_CONFIG.MEASUREMENT_ID);
+    Analytics.trackPopupOpen();
 
-  // Start update interval
-  startUpdateInterval();
-
-  // Get current tab URL when popup opens
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    // Get current tab URL when popup opens
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tabs[0]) {
       currentTabUrl = tabs[0].url;
-      document.getElementById(DOM_IDS.CURRENT_URL).textContent = currentTabUrl;
-
-      // Fill the website URL input field
-      const urlInput = document.getElementById(DOM_IDS.WEBSITE_URL);
-      if (urlInput) {
-        urlInput.value = currentTabUrl;
-        Analytics.trackUrlAutofill();
-      }
-
-      // Add click handler to the parent div containing the link icon
-      const currentUrlInfo = document.getElementById("currentUrlInfo");
-      const iconContainer = currentUrlInfo.querySelector("svg");
-      const originalIcon = `
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-      `;
-
-      const successIcon = `
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-      `;
-
-      const errorIcon = `
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      `;
-
-      // Make the icon look clickable
-      iconContainer.style.cursor = "pointer";
-
-      // Add hover effect
-      iconContainer.addEventListener("mouseenter", () => {
-        iconContainer.style.color = "#4B5563"; // text-gray-700
-      });
-
-      iconContainer.addEventListener("mouseleave", () => {
-        iconContainer.style.color = "#4B5563"; // text-gray-600
-      });
-
-      // Add click handler for copying
-      iconContainer.addEventListener("click", async () => {
-        try {
-          await navigator.clipboard.writeText(currentTabUrl);
-          Analytics.trackUrlCopy(true);
-          // Show success icon
-          iconContainer.style.stroke = "#059669";
-          iconContainer.innerHTML = successIcon;
-          setTimeout(() => {
-            iconContainer.style.stroke = "currentColor";
-            iconContainer.innerHTML = originalIcon;
-          }, 1000);
-        } catch (err) {
-          Analytics.trackUrlCopy(false);
-          console.error("Failed to copy URL:", err);
-          // Show error icon
-          iconContainer.style.stroke = "#DC2626";
-          iconContainer.innerHTML = errorIcon;
-          setTimeout(() => {
-            iconContainer.style.stroke = "currentColor";
-            iconContainer.innerHTML = originalIcon;
-          }, 1000);
-        }
-      });
     }
-  });
 
-  await loadRules();
-  setupEventListeners();
+    // Initial setup
+    await setupUI();
+    await loadRules();
+    setupEventListeners();
+
+    // Start update interval after everything is set up
+    startUpdateInterval();
+  } catch (error) {
+    console.error("Error initializing popup:", error);
+    showErrorToast("Error initializing popup");
+  }
 });
 
 // Load all rules and update the UI
@@ -130,7 +75,7 @@ async function loadActiveRules() {
   const allRulesList = document.getElementById(DOM_IDS.ALL_RULES_LIST);
   const removeAllRulesBtn = document.getElementById(DOM_IDS.REMOVE_ALL_RULES);
   const allRulesHeader = document.getElementById("all-rules-header");
-  
+
   allRulesList.innerHTML = "";
 
   if (!currentRules || currentRules.length === 0) {
@@ -144,19 +89,9 @@ async function loadActiveRules() {
   allRulesHeader.classList.remove("hidden");
   removeAllRulesBtn.classList.remove("hidden");
 
-  // Load time spent for each rule
-  const updatedRules = await Promise.all(
-    currentRules.map(async (rule) => {
-      const timeSpent = await StorageService.getTimeSpentToday(rule.id);
-      return {
-        ...rule,
-        timeSpentToday: timeSpent,
-      };
-    })
-  );
-
-  updatedRules.forEach((rule) => {
-    const ruleElement = createRuleElement(rule);
+  // Create and append rule elements
+  await Promise.all(currentRules.map(async (rule) => {
+    const ruleElement = await createRuleElement(rule);
     allRulesList.appendChild(ruleElement);
 
     // Add click handler for edit button
@@ -174,7 +109,6 @@ async function loadActiveRules() {
       const radioButton = document.querySelector(
         `input[name="blockingModeRadio"][value="${rule.blockingMode}"]`
       );
-      console.log(radioButton, rule);
       if (radioButton) {
         radioButton.checked = true;
         // Create and dispatch a change event
@@ -212,7 +146,7 @@ async function loadActiveRules() {
     deleteButton?.addEventListener("click", async (e) => {
       e.stopPropagation();
       const confirmed = await showConfirmationModal();
-      
+
       if (confirmed === true) {
         try {
           await StorageService.deleteRule(rule.id);
@@ -236,7 +170,7 @@ async function loadActiveRules() {
       Analytics.trackRuleToggle(rule.enabled);
       await updateRuleLists();
     });
-  });
+  }));
 }
 
 async function loadApplyingRules() {
@@ -319,24 +253,12 @@ async function loadApplyingRules() {
       return 0;
     });
 
-    // Load time spent for each rule
-    const updatedRules = await Promise.all(
-      applyingRules.map(async (rule) => {
-        const timeSpent = await StorageService.getTimeSpentToday(rule.id);
-        return {
-          ...rule,
-          timeSpentToday: timeSpent,
-          matchType: rule.websiteUrl === currentTabUrl ? "exact" : "pattern",
-        };
-      })
-    );
-
-    // Create rule elements with updated time spent
-    updatedRules.forEach((rule) => {
-      const ruleElement = createRuleElement(rule, true);
+    // Create rule elements
+    await Promise.all(applyingRules.map(async (rule) => {
+      const ruleElement = await createRuleElement(rule, true);
 
       // Add match type indicator
-      if (rule.matchType === "pattern") {
+      if (rule.websiteUrl !== currentTabUrl) {
         const container = ruleElement.querySelector(".space-y-2");
         if (container) {
           container.insertAdjacentHTML("beforeend", TEMPLATES.PATTERN_MATCH_INDICATOR);
@@ -344,7 +266,7 @@ async function loadApplyingRules() {
       }
 
       applyingRulesList.appendChild(ruleElement);
-    });
+    }));
   }
 }
 
@@ -558,4 +480,73 @@ function handleTabSwitch(e) {
 // Update both rule lists after changes
 async function updateRuleLists() {
   await loadRules();
+}
+
+// Set up initial UI state
+async function setupUI() {
+  if (currentTabUrl) {
+    document.getElementById(DOM_IDS.CURRENT_URL).textContent = currentTabUrl;
+
+    // Fill the website URL input field
+    const urlInput = document.getElementById(DOM_IDS.WEBSITE_URL);
+    if (urlInput) {
+      urlInput.value = currentTabUrl;
+      Analytics.trackUrlAutofill();
+    }
+
+    // Add click handler to the parent div containing the link icon
+    const currentUrlInfo = document.getElementById("currentUrlInfo");
+    const iconContainer = currentUrlInfo.querySelector("svg");
+    const originalIcon = `
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+    `;
+
+    const successIcon = `
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+    `;
+
+    const errorIcon = `
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    `;
+
+    // Make the icon look clickable
+    iconContainer.style.cursor = "pointer";
+
+    // Add hover effect
+    iconContainer.addEventListener("mouseenter", () => {
+      iconContainer.style.color = "#4B5563"; // text-gray-700
+    });
+
+    iconContainer.addEventListener("mouseleave", () => {
+      iconContainer.style.color = "#4B5563"; // text-gray-600
+    });
+
+    // Add click handler for copying
+    iconContainer.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(currentTabUrl);
+        Analytics.trackUrlCopy(true);
+        // Show success icon
+        iconContainer.style.stroke = "#059669";
+        iconContainer.innerHTML = successIcon;
+        setTimeout(() => {
+          iconContainer.style.stroke = "currentColor";
+          iconContainer.innerHTML = originalIcon;
+        }, 1000);
+      } catch (err) {
+        Analytics.trackUrlCopy(false);
+        console.error("Failed to copy URL:", err);
+        // Show error icon
+        iconContainer.style.stroke = "#DC2626";
+        iconContainer.innerHTML = errorIcon;
+        setTimeout(() => {
+          iconContainer.style.stroke = "currentColor";
+          iconContainer.innerHTML = originalIcon;
+        }, 1000);
+      }
+    });
+  }
 }

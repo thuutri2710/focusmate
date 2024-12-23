@@ -3,7 +3,6 @@ import { StorageService } from "./storage.js";
 export class RuleService {
   static async getRulesWithTimeSpent() {
     const rules = await StorageService.getRules();
-    console.log(rules);
     return Promise.all(
       rules.map(async (rule) => ({
         ...rule,

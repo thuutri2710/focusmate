@@ -78,6 +78,14 @@ export const TEMPLATES = {
       </div>
     `
   },
+  PATTERN_MATCH_INDICATOR: `
+    <div class="mt-2 text-xs text-gray-500 flex items-center gap-1">
+      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+      Pattern match
+    </div>
+  `,
   RULE_TEMPLATES: {
     TIME_BADGE: (startTime, endTime) => `
       <div class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
@@ -89,13 +97,13 @@ export const TEMPLATES = {
         ${text}
       </span>
     `,
-    TIME_LIMIT_SECTION: (rule, colorTheme, isNearLimit, isOverLimit) => `
+    TIME_LIMIT_SECTION: (rule, colorTheme, isNearLimit, isOverLimit, timeSpent) => `
       <div class="space-y-2">
         <div class="flex items-center justify-between text-sm">
           <span class="text-gray-600">Daily Time Limit:</span>
           <div class="flex items-center gap-1.5">
             <div class="font-medium flex items-baseline">
-              <span class="${colorTheme.text}">${rule.timeSpentToday || 0}</span>
+              <span class="${colorTheme.text}">${timeSpent || 0}</span>
               <span class="text-gray-400 mx-1">/</span>
               <span class="text-gray-700">${rule.dailyTimeLimit}</span>
               <span class="text-gray-500 ml-1 text-xs">minutes</span>
@@ -105,7 +113,7 @@ export const TEMPLATES = {
         </div>
         <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
           <div class="h-full rounded-full transition-all duration-300 bg-gradient-to-r ${colorTheme.progress}" 
-            style="width: ${Math.min(100, (rule.timeSpentToday || 0) / rule.dailyTimeLimit * 100)}%">
+            style="width: ${Math.min(100, (timeSpent || 0) / rule.dailyTimeLimit * 100)}%">
           </div>
         </div>
       </div>
@@ -125,29 +133,21 @@ export const TEMPLATES = {
         </button>
       </div>
     `,
-    PATTERN_MATCH_INDICATOR: `
-      <div class="text-xs text-gray-500 mt-2 flex items-center gap-1">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-        </svg>
-        Pattern match
-      </div>
-    `,
     COLOR_THEMES: {
-      OVER_LIMIT: {
-        text: 'text-rose-600',
-        badge: 'bg-rose-50 text-rose-700',
-        progress: 'from-rose-500 to-rose-600'
+      NORMAL: {
+        text: 'text-gray-700',
+        badge: 'bg-gray-100 text-gray-700',
+        progress: 'from-gray-300 to-gray-400'
       },
       NEAR_LIMIT: {
-        text: 'text-orange-600',
-        badge: 'bg-orange-50 text-orange-700',
-        progress: 'from-orange-500 to-orange-600'
+        text: 'text-yellow-700',
+        badge: 'bg-yellow-100 text-yellow-700',
+        progress: 'from-yellow-300 to-yellow-400'
       },
-      NORMAL: {
-        text: 'text-emerald-600',
-        badge: 'bg-emerald-50 text-emerald-700',
-        progress: 'from-emerald-500 to-emerald-600'
+      OVER_LIMIT: {
+        text: 'text-red-700',
+        badge: 'bg-red-100 text-red-700',
+        progress: 'from-red-300 to-red-400'
       }
     }
   }

@@ -130,7 +130,14 @@ function isRuleMatched(rule, normalizedUrl, timeSpent, currentTimeMinutes) {
   return !rule.dailyTimeLimit && !rule.startTime && !rule.endTime;
 }
 
+const STORAGE_KEYS = {
+  TIME_USAGE: "timeUsage",
+  RULES: "blockRules",
+};
+
 export const StorageService = {
+  // Storage keys
+
   async getRules() {
     // Force refresh the cache
     rulesCache = null;
@@ -169,65 +176,115 @@ export const StorageService = {
     rulesCache = [];
   },
 
-  async cleanupOldTimeUsage() {
-    const timeUsage = await this.getTimeUsage();
-    const today = new Date().toLocaleDateString();
-
-    // Only keep today's data
-    const cleanedTimeUsage = {
-      [today]: timeUsage[today] || {},
-    };
-
-    await chrome.storage.local.set({ timeUsage: cleanedTimeUsage });
-  },
-
-  async getTimeUsage() {
-    const result = await chrome.storage.local.get("timeUsage");
-    return result.timeUsage || {};
-  },
-
-  async updateTimeUsage(url, minutes) {
+  async updateTimeUsage(url, totalMilliseconds) {
+    console.log("Updating time usage for:", url, "Total ms:", totalMilliseconds);
+    // Normalize URL for consistent storage
     const normalizedUrl = normalizeUrl(url);
-    const today = new Date().toLocaleDateString();
-    const timeUsage = await this.getTimeUsage();
 
-    if (!timeUsage[today]) {
-      timeUsage[today] = {};
+    // Get current date as YYYY-MM-DD for the key
+    const today = new Date().toISOString().split("T")[0];
+
+    try {
+      // Get existing time usage data
+      const data = await chrome.storage.local.get(STORAGE_KEYS.TIME_USAGE);
+      const timeUsage = data[STORAGE_KEYS.TIME_USAGE] || {};
+
+      // Initialize nested objects if they don't exist
+      if (!timeUsage[today]) {
+        timeUsage[today] = {};
+      }
+
+      // Store the total milliseconds spent
+      timeUsage[today][normalizedUrl] = Math.round(totalMilliseconds);
+
+      // Save back to storage
+      const saveData = {
+        [STORAGE_KEYS.TIME_USAGE]: timeUsage,
+      };
+      await chrome.storage.local.set(saveData);
+
+      console.log("Saved time usage:", {
+        url: normalizedUrl,
+        date: today,
+        timeSpent: totalMilliseconds,
+      });
+
+      return timeUsage[today][normalizedUrl];
+    } catch (error) {
+      console.error("Error updating time usage:", error);
+      throw error;
     }
-
-    if (!timeUsage[today][normalizedUrl]) {
-      timeUsage[today][normalizedUrl] = 0;
-    }
-
-    timeUsage[today][normalizedUrl] += minutes;
-    await chrome.storage.local.set({ timeUsage });
-
-    return timeUsage[today][normalizedUrl];
   },
 
   async getTimeSpentToday(url) {
-    const normalizedUrl = normalizeUrl(url);
-    const today = new Date().toLocaleDateString();
-    const timeUsage = await this.getTimeUsage();
-    return Math.round(timeUsage[today]?.[normalizedUrl] || 0);
+    try {
+      const normalizedUrl = normalizeUrl(url);
+      const today = new Date().toISOString().split("T")[0];
+
+      const data = await chrome.storage.local.get(STORAGE_KEYS.TIME_USAGE);
+      const timeUsage = data[STORAGE_KEYS.TIME_USAGE] || {};
+
+      return timeUsage[today]?.[normalizedUrl] || 0;
+    } catch (error) {
+      console.error("Error getting time spent:", error);
+      return 0;
+    }
+  },
+
+  async clearTimeUsage() {
+    try {
+      await chrome.storage.local.remove(STORAGE_KEYS.TIME_USAGE);
+      console.log("Time usage data cleared");
+    } catch (error) {
+      console.error("Error clearing time usage:", error);
+      throw error;
+    }
+  },
+
+  async clearOldTimeUsage() {
+    try {
+      const data = await chrome.storage.local.get(STORAGE_KEYS.TIME_USAGE);
+      const timeUsage = data[STORAGE_KEYS.TIME_USAGE] || {};
+
+      // Keep only today's data
+      const today = new Date().toISOString().split("T")[0];
+      const newTimeUsage = {
+        [today]: timeUsage[today] || {},
+      };
+
+      await chrome.storage.local.set({
+        [STORAGE_KEYS.TIME_USAGE]: newTimeUsage,
+      });
+
+      console.log("Old time usage data cleared");
+    } catch (error) {
+      console.error("Error clearing old time usage:", error);
+      throw error;
+    }
+  },
+
+  async getAllTimeUsage() {
+    try {
+      const data = await chrome.storage.local.get(STORAGE_KEYS.TIME_USAGE);
+      return data[STORAGE_KEYS.TIME_USAGE] || {};
+    } catch (error) {
+      console.error("Error getting all time usage:", error);
+      return {};
+    }
   },
 
   async isUrlBlocked(url) {
-    const rules = await getRulesFromCache();
-    if (!rules.length) return null;
-
+    const rules = await this.getRules();
     const normalizedUrl = normalizeUrl(url);
-    const today = new Date().toLocaleDateString();
-    const timeUsage = await this.getTimeUsage();
-    const timeSpent = timeUsage[today]?.[normalizedUrl] || 0;
-    const currentTimeMinutes = getCurrentTimeInMinutes();
+    const timeSpentMs = await this.getTimeSpentToday(normalizedUrl);
+    const timeSpentMinutes = timeSpentMs / (1000 * 60); // Convert to minutes for rule checking
 
-    // Process rules in order of matching complexity
+    // Group rules by type for efficient checking
     const { exact, wildcard, regexp } = groupRulesByType(rules);
 
-    // Check all rules in order of complexity
+    // Check each type of rule
     for (const rule of [...exact, ...wildcard, ...regexp]) {
-      if (isRuleMatched(rule, normalizedUrl, timeSpent, currentTimeMinutes)) {
+      if (isRuleMatched(rule, normalizedUrl, timeSpentMinutes, getCurrentTimeInMinutes())) {
         return rule;
       }
     }

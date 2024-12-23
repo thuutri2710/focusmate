@@ -476,7 +476,7 @@ function setupEventListeners() {
       // If validation passes, proceed with saving
       if (blockForm.dataset.editRuleId) {
         rule.id = blockForm.dataset.editRuleId;
-        await StorageService.updateRule(rule);
+        await StorageService.saveRule(rule);
         Analytics.trackRuleEdit(rule.blockingMode);
         delete blockForm.dataset.editRuleId;
       } else {

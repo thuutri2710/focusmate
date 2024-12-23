@@ -7,7 +7,7 @@ export class RuleService {
     return Promise.all(
       rules.map(async (rule) => ({
         ...rule,
-        timeSpentToday: await StorageService.getTimeSpentToday(rule.id),
+        timeSpentToday: await StorageService.getTimeSpentToday(rule.websiteUrl),
       }))
     );
   }

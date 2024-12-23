@@ -3,42 +3,37 @@ import { StorageService } from "../services/storage.js";
 // Track active tabs and their start times
 const activeTabTimes = new Map();
 
-// Track the current date for cleanup
-let currentDate = new Date().toLocaleDateString();
-
-// Function to check and run cleanup if it's a new day
-async function checkAndCleanup() {
-  const now = new Date();
-  const todayDate = now.toLocaleDateString();
-  
-  if (todayDate !== currentDate) {
-    // It's a new day, run cleanup
-    await StorageService.cleanupOldTimeUsage();
-    currentDate = todayDate;
-  }
-}
-
-// Add periodic time check
-chrome.alarms.create("checkTimeLimit", {
-  periodInMinutes: 1,
+// Add periodic time check (every second)
+chrome.alarms.create("updateTimeUsage", {
+  periodInMinutes: 60, // Run every second
 });
 
 // Handle alarms
 chrome.alarms.onAlarm.addListener(async (alarm) => {
-  if (alarm.name === "checkTimeLimit") {
-    // Check for new day first
-    await checkAndCleanup();
-    
-    const tabs = await chrome.tabs.query({ active: true });
-    for (const tab of tabs) {
+  if (alarm.name === "updateTimeUsage") {
+    // Update time for all active tabs
+    const activeTabs = await chrome.tabs.query({ active: true });
+    for (const tab of activeTabs) {
       if (tab.url) {
-        const url = new URL(tab.url);
-        const urlPath = url.origin + url.pathname;
-        const blockedRule = await StorageService.isUrlBlocked(urlPath);
-        if (blockedRule) {
-          chrome.tabs.update(tab.id, {
-            url: blockedRule.redirectUrl || "https://www.google.com",
-          });
+        const tabInfo = activeTabTimes.get(tab.id);
+        if (tabInfo) {
+          const now = Date.now();
+          const timeSpent = (now - tabInfo.lastUpdate) / 1000 / 60; // Convert to minutes
+
+          // Update the time usage
+          await StorageService.updateTimeUsage(tabInfo.url, timeSpent);
+
+          // Update the last update time
+          tabInfo.lastUpdate = now;
+          activeTabTimes.set(tab.id, tabInfo);
+
+          // Check if URL should be blocked
+          const blockedRule = await StorageService.isUrlBlocked(tabInfo.url);
+          if (blockedRule) {
+            chrome.tabs.update(tab.id, {
+              url: blockedRule.redirectUrl || "https://www.google.com",
+            });
+          }
         }
       }
     }
@@ -63,6 +58,7 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
     activeTabTimes.set(activeInfo.tabId, {
       url: urlPath,
       startTime: Date.now(),
+      lastUpdate: Date.now(),
     });
   }
 });
@@ -79,6 +75,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     activeTabTimes.set(tabId, {
       url: urlPath,
       startTime: Date.now(),
+      lastUpdate: Date.now(),
     });
   }
 });
@@ -95,12 +92,15 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
     // Window gained focus, start tracking active tab
     const tabs = await chrome.tabs.query({ active: true, windowId });
     for (const tab of tabs) {
-      const url = new URL(tab.url);
-      const urlPath = url.origin + url.pathname;
-      activeTabTimes.set(tab.id, {
-        url: urlPath,
-        startTime: Date.now(),
-      });
+      if (tab.url) {
+        const url = new URL(tab.url);
+        const urlPath = url.origin + url.pathname;
+        activeTabTimes.set(tab.id, {
+          url: urlPath,
+          startTime: Date.now(),
+          lastUpdate: Date.now(),
+        });
+      }
     }
   }
 });
@@ -109,25 +109,19 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
 async function updateTabTime(tabId) {
   const tabInfo = activeTabTimes.get(tabId);
   if (tabInfo) {
-    const timeSpent = (Date.now() - tabInfo.startTime) / 1000 / 60; // Convert to minutes
+    const timeSpent = (Date.now() - tabInfo.lastUpdate) / 1000 / 60; // Convert to minutes
+    console.log("Updating time for URL:", tabInfo.url, "Minutes:", timeSpent);
     await StorageService.updateTimeUsage(tabInfo.url, timeSpent);
-
-    // Check if URL should be blocked after updating time
-    const blockedRule = await StorageService.isUrlBlocked(tabInfo.url);
-    if (blockedRule) {
-      chrome.tabs.update(tabId, {
-        url: blockedRule.redirectUrl || "https://www.google.com",
-      });
-    }
-
     activeTabTimes.delete(tabId);
   }
 }
 
+// Handle tab close
 chrome.tabs.onRemoved.addListener(async (tabId) => {
   await updateTabTime(tabId);
 });
 
+// Handle navigation
 chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
   if (details.frameId !== 0) return;
 
@@ -138,7 +132,6 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
   await updateTabTime(details.tabId);
 
   const blockedRule = await StorageService.isUrlBlocked(urlPath);
-
   if (blockedRule) {
     chrome.tabs.update(details.tabId, {
       url: blockedRule.redirectUrl || "https://www.google.com",

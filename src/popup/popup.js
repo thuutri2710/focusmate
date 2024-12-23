@@ -191,22 +191,25 @@ async function loadApplyingRules() {
     return new RegExp(`^${regexStr}$`);
   };
 
-  // Helper function to get URL parts
-  const getUrlParts = (url) => {
+  // Helper function to normalize URL for comparison
+  const normalizeUrlForComparison = (url) => {
     try {
+      // Add protocol if missing
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+      }
       const urlObj = new URL(url);
       return {
-        protocol: urlObj.protocol,
-        hostname: urlObj.hostname,
+        hostname: urlObj.hostname.replace(/^www\./, ''),
         pathname: urlObj.pathname,
-        fullUrl: url,
+        fullUrl: url
       };
     } catch (e) {
       return null;
     }
   };
 
-  const currentUrlParts = getUrlParts(currentTabUrl);
+  const currentUrlParts = normalizeUrlForComparison(currentTabUrl);
   if (!currentUrlParts) {
     applyingRulesList.innerHTML = TEMPLATES.EMPTY_STATE.INVALID_URL;
     return;
@@ -215,31 +218,32 @@ async function loadApplyingRules() {
   // Filter rules that apply to current URL
   const applyingRules = currentRules.filter((rule) => {
     const rulePattern = rule.websiteUrl;
+    
+    // Normalize URLs for comparison
+    const normalizedRule = normalizeUrlForComparison(rulePattern);
+    const normalizedCurrent = normalizeUrlForComparison(currentTabUrl);
 
-    // Check exact match first
-    if (rulePattern === currentTabUrl) return true;
+    if (!normalizedRule || !normalizedCurrent) return false;
 
-    // Check pattern matches
-    if (rulePattern.includes("*")) {
-      const regex = patternToRegex(rulePattern);
-      if (regex.test(currentTabUrl)) return true;
-
-      // Check if the pattern matches the hostname
-      const ruleUrlParts = getUrlParts(rulePattern.replace(/\*/g, "example.com"));
-      if (ruleUrlParts && ruleUrlParts.hostname === currentUrlParts.hostname) return true;
+    // Check exact match first (ignoring protocol and www.)
+    if (normalizedRule.hostname === normalizedCurrent.hostname) {
+      // If rule has no path or just /, it matches all paths
+      if (normalizedRule.pathname === "/" || !normalizedRule.pathname) {
+        return true;
+      }
+      // If rule has a specific path, current URL should start with it
+      if (normalizedCurrent.pathname.startsWith(normalizedRule.pathname)) {
+        return true;
+      }
     }
 
-    // Check if current URL starts with the pattern (for partial matches)
-    if (currentTabUrl.startsWith(rulePattern.replace(/\*$/, ""))) return true;
-
-    // Check domain-only patterns
-    const ruleUrlParts = getUrlParts(rulePattern.replace(/\*/g, "example.com"));
-    if (
-      ruleUrlParts &&
-      ruleUrlParts.hostname === currentUrlParts.hostname &&
-      (rulePattern.endsWith("/*") || rulePattern.includes("*"))
-    )
-      return true;
+    // Check wildcard patterns
+    if (rulePattern.includes("*")) {
+      const regex = patternToRegex(rulePattern);
+      // Test against both the full URL and just the hostname
+      return regex.test(currentTabUrl) || 
+             regex.test(normalizedCurrent.hostname);
+    }
 
     return false;
   });

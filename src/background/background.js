@@ -1,4 +1,5 @@
 import { StorageService } from "../services/storage.js";
+import { extractDomain } from "../utils/urlUtils.js";
 
 // Track active tabs and their start times
 const activeTabTimes = new Map();
@@ -27,8 +28,8 @@ async function clearCurrentTracking() {
 // Function to start tracking a tab
 function startTrackingTab(tabId, url) {
   // Extract domain from URL
-  const domain = StorageService.extractDomain(url);
-  
+  const domain = extractDomain(url);
+
   // Set up new tracking for this tab
   activeTabTimes.set(tabId, {
     url: domain, // Store domain instead of full URL
@@ -106,7 +107,7 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   // Get the new active tab's info
   const newTab = await chrome.tabs.get(activeInfo.tabId);
-  
+
   // Update final time for previous tab and clear interval
   await clearCurrentTracking();
 
@@ -137,7 +138,7 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
   // Only clear tracking if this was the tracked tab
   if (activeTabTimes.has(tabId)) {
     await clearCurrentTracking();
-    
+
     // If window is still focused, start tracking the new active tab
     if (isWindowFocused) {
       const activeTabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });

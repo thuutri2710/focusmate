@@ -160,17 +160,26 @@ export const StorageService = {
   },
 
   async updateTimeUsage(url, totalMilliseconds) {
-    console.log("Updating time usage for:", url, "Total ms:", totalMilliseconds);
-    // Normalize URL for consistent storage
-    const normalizedUrl = normalizeUrl(url);
-
-    // Get current date as YYYY-MM-DD for the key
-    const today = new Date().toISOString().split("T")[0];
-
     try {
+      const normalizedUrl = normalizeUrl(url);
+      const today = new Date().toISOString().split("T")[0];
+
+      console.log("[Time Tracking] Updating time for:", {
+        originalUrl: url,
+        normalizedUrl,
+        date: today,
+        newTime: totalMilliseconds,
+      });
+
       // Get existing time usage data
       const data = await chrome.storage.local.get(STORAGE_KEYS.TIME_USAGE);
       const timeUsage = data[STORAGE_KEYS.TIME_USAGE] || {};
+
+      console.log("[Time Tracking] Current storage state:", {
+        hasTimeUsage: !!data[STORAGE_KEYS.TIME_USAGE],
+        hasTodayData: !!timeUsage[today],
+        currentValue: timeUsage[today]?.[normalizedUrl] || 0,
+      });
 
       // Initialize nested objects if they don't exist
       if (!timeUsage[today]) {
@@ -186,15 +195,17 @@ export const StorageService = {
       };
       await chrome.storage.local.set(saveData);
 
-      console.log("Saved time usage:", {
+      console.log("[Time Tracking] Saved new state:", {
         url: normalizedUrl,
         date: today,
-        timeSpent: totalMilliseconds,
+        oldTime: timeUsage[today]?.[normalizedUrl] || 0,
+        newTime: totalMilliseconds,
+        difference: totalMilliseconds - (timeUsage[today]?.[normalizedUrl] || 0),
       });
 
       return timeUsage[today][normalizedUrl];
     } catch (error) {
-      console.error("Error updating time usage:", error);
+      console.error("[Time Tracking] Error updating time usage:", error);
       throw error;
     }
   },
@@ -204,12 +215,26 @@ export const StorageService = {
       const normalizedUrl = normalizeUrl(url);
       const today = new Date().toISOString().split("T")[0];
 
+      console.log("[Time Tracking] Getting time spent for:", {
+        originalUrl: url,
+        normalizedUrl,
+        date: today,
+      });
+
       const data = await chrome.storage.local.get(STORAGE_KEYS.TIME_USAGE);
       const timeUsage = data[STORAGE_KEYS.TIME_USAGE] || {};
+      const timeSpent = timeUsage[today]?.[normalizedUrl] || 0;
 
-      return timeUsage[today]?.[normalizedUrl] || 0;
+      console.log("[Time Tracking] Retrieved time:", {
+        hasTimeUsage: !!data[STORAGE_KEYS.TIME_USAGE],
+        hasTodayData: !!timeUsage[today],
+        timeSpent,
+        timeSpentMinutes: Math.round(timeSpent / (1000 * 60)),
+      });
+
+      return timeSpent;
     } catch (error) {
-      console.error("Error getting time spent:", error);
+      console.error("[Time Tracking] Error getting time spent:", error);
       return 0;
     }
   },
@@ -265,6 +290,10 @@ export const StorageService = {
     // Group rules by type for efficient checking
     const { exact, wildcard, regexp } = groupRulesByType(rules);
 
+    console.log("Rules grouped by type:", {
+      rule,
+      timeSpentMinutes,
+    });
     // Check each type of rule
     for (const rule of [...exact, ...wildcard, ...regexp]) {
       if (isRuleMatched(rule, normalizedDomain, timeSpentMinutes, getCurrentTimeInMinutes())) {

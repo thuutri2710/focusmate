@@ -88,7 +88,7 @@ export const TEMPLATES = {
   `,
   RULE_TEMPLATES: {
     TIME_BADGE: (startTime, endTime) => `
-      <div class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
+      <div class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
         ${startTime} - ${endTime}
       </div>
     `,
@@ -103,16 +103,30 @@ export const TEMPLATES = {
           <span class="text-gray-600">Daily Time Limit:</span>
           <div class="flex items-center gap-1.5">
             <div class="font-medium flex items-baseline">
-              <span class="${colorTheme.text}">${timeSpent || 0}</span>
+              <span class="${isOverLimit ? 'text-red-600' : isNearLimit ? 'text-amber-600' : 'text-blue-600'}">${timeSpent || 0}</span>
               <span class="text-gray-400 mx-1">/</span>
               <span class="text-gray-700">${rule.dailyTimeLimit}</span>
               <span class="text-gray-500 ml-1 text-xs">minutes</span>
             </div>
-            ${isNearLimit ? RULE_TEMPLATES.STATUS_BADGE(colorTheme, isOverLimit ? "Limit reached" : "Almost reached") : ""}
+            ${isNearLimit ? `
+              <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                isOverLimit 
+                  ? 'bg-red-50 text-red-700' 
+                  : 'bg-amber-50 text-amber-700'
+              }">
+                ${isOverLimit ? "Limit reached" : "Almost reached"}
+              </span>
+            ` : ""}
           </div>
         </div>
         <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-          <div class="h-full rounded-full transition-all duration-300 bg-gradient-to-r ${colorTheme.progress}" 
+          <div class="h-full rounded-full transition-all duration-300 ${
+            isOverLimit 
+              ? 'bg-red-500'
+              : isNearLimit 
+                ? 'bg-amber-500'
+                : 'bg-blue-500'
+          }" 
             style="width: ${Math.min(100, (timeSpent || 0) / rule.dailyTimeLimit * 100)}%">
           </div>
         </div>

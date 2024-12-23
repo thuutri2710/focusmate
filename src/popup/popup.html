@@ -143,7 +143,13 @@
                                 d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                         </svg>
                         <span class="font-medium flex-shrink-0">Current URL:</span>
-                        <span id="currentUrl" class="text-gray-900 truncate max-w-[200px] inline-block" title=""></span>
+                        <div class="group relative flex-1 min-w-0">
+                            <span id="currentUrl" class="text-gray-900 truncate max-w-[200px] inline-block"></span>
+                            <div class="absolute left-0 -top-2 -translate-y-full invisible group-hover:visible bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-normal break-all max-w-[300px]">
+                                <span id="currentUrlTooltip"></span>
+                                <div class="absolute left-4 top-full w-2 h-2 bg-gray-900 transform rotate-45"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

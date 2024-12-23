@@ -25,12 +25,14 @@ function startUpdateInterval() {
     clearInterval(updateInterval);
   }
 
-  // Update rules immediately
+  // Update rules and URL immediately
   updateRuleLists();
+  updateCurrentUrl();
 
   // Set up interval to update rules every 30 seconds
   updateInterval = setInterval(() => {
     updateRuleLists();
+    updateCurrentUrl();
   }, 30000);
 }
 
@@ -51,11 +53,15 @@ document.addEventListener(EVENTS.DOM_CONTENT_LOADED, async () => {
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tabs[0]) {
       currentTabUrl = tabs[0].url;
-      // Set tooltip
       const currentUrlElement = document.getElementById(DOM_IDS.CURRENT_URL);
+      const currentUrlTooltip = document.getElementById("currentUrlTooltip");
       if (currentUrlElement) {
-        currentUrlElement.title = currentTabUrl;
+        currentUrlElement.textContent = currentTabUrl;
       }
+      if (currentUrlTooltip) {
+        currentUrlTooltip.textContent = currentTabUrl;
+      }
+      await updateCurrentUrl();
     }
 
     // Initial setup
@@ -496,11 +502,19 @@ async function updateRuleLists() {
   await loadRules();
 }
 
+async function updateCurrentUrl() {
+  const currentUrlElement = document.getElementById(DOM_IDS.CURRENT_URL);
+  if (currentUrlElement && currentTabUrl) {
+    currentUrlElement.textContent = currentTabUrl;
+    currentUrlElement.title = currentTabUrl;
+  }
+}
+
 // Set up initial UI state
 async function setupUI() {
   if (currentTabUrl) {
     // Show full URL in the display area
-    document.getElementById(DOM_IDS.CURRENT_URL).textContent = currentTabUrl;
+    await updateCurrentUrl();
 
     // Fill the website URL input field with just the domain
     const urlInput = document.getElementById(DOM_IDS.WEBSITE_URL);

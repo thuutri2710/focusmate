@@ -12,7 +12,7 @@ export function extractDomain(url) {
     console.log(url);
     const urlObj = new URL(url);
     // Remove www. and return domain
-    return urlObj.origin.replace(/^www\./, "");
+    return urlObj.host.replace(/^www\./, "");
   } catch (e) {
     // If URL is invalid, return as is
     return url;

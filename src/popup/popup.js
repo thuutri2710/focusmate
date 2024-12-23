@@ -91,87 +91,89 @@ async function loadActiveRules() {
   removeAllRulesBtn.classList.remove("hidden");
 
   // Create and append rule elements
-  await Promise.all(currentRules.map(async (rule) => {
-    const ruleElement = await createRuleElement(rule);
-    allRulesList.appendChild(ruleElement);
+  await Promise.all(
+    currentRules.map(async (rule) => {
+      const ruleElement = await createRuleElement(rule);
+      allRulesList.appendChild(ruleElement);
 
-    // Add click handler for edit button
-    const editButton = ruleElement.querySelector(".edit-rule-btn");
-    editButton?.addEventListener("click", (e) => {
-      e.stopPropagation();
-      isEditButtonClick = true;
-      Analytics.trackRuleEdit(rule.blockingMode);
+      // Add click handler for edit button
+      const editButton = ruleElement.querySelector(".edit-rule-btn");
+      editButton?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        isEditButtonClick = true;
+        Analytics.trackRuleEdit(rule.blockingMode);
 
-      // Fill form with rule data first
-      document.getElementById(DOM_IDS.WEBSITE_URL).value = rule.websiteUrl;
-      document.getElementById(DOM_IDS.REDIRECT_URL).value = rule.redirectUrl || "";
+        // Fill form with rule data first
+        document.getElementById(DOM_IDS.WEBSITE_URL).value = rule.websiteUrl;
+        document.getElementById(DOM_IDS.REDIRECT_URL).value = rule.redirectUrl || "";
 
-      // Set blocking mode radio button and trigger change event
-      const radioButton = document.querySelector(
-        `input[name="blockingModeRadio"][value="${rule.blockingMode}"]`
-      );
-      if (radioButton) {
-        radioButton.checked = true;
-        // Create and dispatch a change event
-        const changeEvent = new Event("change", { bubbles: true });
-        radioButton.dispatchEvent(changeEvent);
-      }
-
-      // Set the appropriate fields based on blocking mode
-      if (rule.blockingMode === BLOCKING_MODES.TIME_RANGE) {
-        document.getElementById(DOM_IDS.START_TIME).value = rule.startTime;
-        document.getElementById(DOM_IDS.END_TIME).value = rule.endTime;
-      } else {
-        document.getElementById(DOM_IDS.DAILY_TIME_LIMIT).value = rule.dailyTimeLimit;
-      }
-
-      // Store the rule ID for updating
-      const form = document.getElementById(DOM_IDS.BLOCK_FORM);
-      form.dataset.editRuleId = rule.id;
-
-      // Update submit button text
-      document.querySelector(`#${DOM_IDS.BLOCK_FORM} button[type="submit"]`).textContent =
-        "Update blocking rule";
-
-      // Switch to Add Rule tab last
-      document.getElementById(DOM_IDS.ADD_RULE_TAB).click();
-
-      // Reset the flag after a short delay to handle any subsequent tab switches
-      setTimeout(() => {
-        isEditButtonClick = false;
-      }, 100);
-    });
-
-    // Add click handler for delete button
-    const deleteButton = ruleElement.querySelector(".delete-rule-btn");
-    deleteButton?.addEventListener("click", async (e) => {
-      e.stopPropagation();
-      const confirmed = await showConfirmationModal();
-
-      if (confirmed === true) {
-        try {
-          await StorageService.deleteRule(rule.id);
-          showToast("Rule removed successfully");
-          Analytics.trackRuleDeletion(rule.blockingMode);
-          await loadRules(); // Only reload if we actually deleted
-        } catch (error) {
-          console.error("Error deleting rule:", error);
-          showToast(error.message || "Failed to delete rule", "error");
+        // Set blocking mode radio button and trigger change event
+        const radioButton = document.querySelector(
+          `input[name="blockingModeRadio"][value="${rule.blockingMode}"]`
+        );
+        if (radioButton) {
+          radioButton.checked = true;
+          // Create and dispatch a change event
+          const changeEvent = new Event("change", { bubbles: true });
+          radioButton.dispatchEvent(changeEvent);
         }
-      }
-      // Don't reload if user cancelled
-    });
 
-    // Add click handler for toggle button
-    const toggleButton = ruleElement.querySelector(".toggle-rule-btn");
-    toggleButton?.addEventListener("click", async (e) => {
-      e.stopPropagation();
-      rule.enabled = !rule.enabled;
-      await StorageService.updateRule(rule);
-      Analytics.trackRuleToggle(rule.enabled);
-      await updateRuleLists();
-    });
-  }));
+        // Set the appropriate fields based on blocking mode
+        if (rule.blockingMode === BLOCKING_MODES.TIME_RANGE) {
+          document.getElementById(DOM_IDS.START_TIME).value = rule.startTime;
+          document.getElementById(DOM_IDS.END_TIME).value = rule.endTime;
+        } else {
+          document.getElementById(DOM_IDS.DAILY_TIME_LIMIT).value = rule.dailyTimeLimit;
+        }
+
+        // Store the rule ID for updating
+        const form = document.getElementById(DOM_IDS.BLOCK_FORM);
+        form.dataset.editRuleId = rule.id;
+
+        // Update submit button text
+        document.querySelector(`#${DOM_IDS.BLOCK_FORM} button[type="submit"]`).textContent =
+          "Update blocking rule";
+
+        // Switch to Add Rule tab last
+        document.getElementById(DOM_IDS.ADD_RULE_TAB).click();
+
+        // Reset the flag after a short delay to handle any subsequent tab switches
+        setTimeout(() => {
+          isEditButtonClick = false;
+        }, 100);
+      });
+
+      // Add click handler for delete button
+      const deleteButton = ruleElement.querySelector(".delete-rule-btn");
+      deleteButton?.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const confirmed = await showConfirmationModal();
+
+        if (confirmed === true) {
+          try {
+            await StorageService.deleteRule(rule.id);
+            showToast("Rule removed successfully");
+            Analytics.trackRuleDeletion(rule.blockingMode);
+            await loadRules(); // Only reload if we actually deleted
+          } catch (error) {
+            console.error("Error deleting rule:", error);
+            showToast(error.message || "Failed to delete rule", "error");
+          }
+        }
+        // Don't reload if user cancelled
+      });
+
+      // Add click handler for toggle button
+      const toggleButton = ruleElement.querySelector(".toggle-rule-btn");
+      toggleButton?.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        rule.enabled = !rule.enabled;
+        await StorageService.updateRule(rule);
+        Analytics.trackRuleToggle(rule.enabled);
+        await updateRuleLists();
+      });
+    })
+  );
 }
 
 async function loadApplyingRules() {
@@ -255,19 +257,21 @@ async function loadApplyingRules() {
     });
 
     // Create rule elements
-    await Promise.all(applyingRules.map(async (rule) => {
-      const ruleElement = await createRuleElement(rule, true);
+    await Promise.all(
+      applyingRules.map(async (rule) => {
+        const ruleElement = await createRuleElement(rule, true);
 
-      // Add match type indicator
-      if (rule.websiteUrl !== currentTabUrl) {
-        const container = ruleElement.querySelector(".space-y-2");
-        if (container) {
-          container.insertAdjacentHTML("beforeend", TEMPLATES.PATTERN_MATCH_INDICATOR);
+        // Add match type indicator
+        if (rule.websiteUrl !== currentTabUrl) {
+          const container = ruleElement.querySelector(".space-y-2");
+          if (container) {
+            container.insertAdjacentHTML("beforeend", TEMPLATES.PATTERN_MATCH_INDICATOR);
+          }
         }
-      }
 
-      applyingRulesList.appendChild(ruleElement);
-    }));
+        applyingRulesList.appendChild(ruleElement);
+      })
+    );
   }
 }
 

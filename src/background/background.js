@@ -36,6 +36,8 @@ function startTrackingTab(tabId, url) {
     lastUpdate: Date.now(),
   });
 
+  checkTabRules(tabId, domain);
+
   // Create new interval for this tab (check every second)
   activeInterval = setInterval(() => {
     checkTabRules(tabId, domain);

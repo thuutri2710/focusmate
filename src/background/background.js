@@ -36,6 +36,7 @@ function startTrackingTab(tabId, url) {
     lastUpdate: Date.now(),
   });
 
+  // start checking rules for this tab immediately
   checkTabRules(tabId, domain);
 
   // Create new interval for this tab (check every second)

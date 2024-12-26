@@ -109,7 +109,7 @@ function isRuleMatched(rule, normalizedDomain, timeSpent, currentTimeMinutes) {
   }
 
   // Check time limit if specified
-  if (rule.timeLimit && timeSpent >= rule.timeLimit) {
+  if (rule.dailyTimeLimit && timeSpent >= rule.dailyTimeLimit) {
     console.log("Time limit exceeded for rule:", rule);
     return true;
   }

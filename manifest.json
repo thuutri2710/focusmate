@@ -3,7 +3,7 @@
   "name": "FocusMate - Website Blocker & Time Manager",
   "version": "1.2.3",
   "description": "Stay focused and productive by blocking distracting websites, limiting daily social media time, and managing digital habits.",
-  "permissions": ["storage", "webNavigation", "tabs", "alarms", "activeTab"],
+  "permissions": ["storage", "tabs", "activeTab"],
   "action": {
     "default_popup": "./src/popup/popup.html"
   },

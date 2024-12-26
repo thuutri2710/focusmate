@@ -5,8 +5,6 @@ import { showToast } from "../utils/uiUtils.js";
 import { showErrorToast } from "../utils/uiUtils.js";
 import { DOM_IDS, EVENTS, BLOCKING_MODES, TABS } from "../constants/index.js";
 import { TEMPLATES } from "../constants/templates.js";
-import { Analytics } from "../services/analytics.js";
-import { ANALYTICS_CONFIG } from "../config/analytics.js";
 import { showConfirmationModal } from "../utils/uiUtils.js";
 import { extractDomain } from "../utils/urlUtils.js";
 
@@ -45,10 +43,6 @@ window.addEventListener("unload", () => {
 
 document.addEventListener(EVENTS.DOM_CONTENT_LOADED, async () => {
   try {
-    // Initialize Analytics
-    Analytics.init(ANALYTICS_CONFIG.MEASUREMENT_ID);
-    Analytics.trackPopupOpen();
-
     // Get current tab URL when popup opens
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tabs[0]) {
@@ -112,7 +106,6 @@ async function loadActiveRules() {
       editButton?.addEventListener("click", (e) => {
         e.stopPropagation();
         isEditButtonClick = true;
-        Analytics.trackRuleEdit(rule.blockingMode);
 
         // Fill form with rule data first
         document.getElementById(DOM_IDS.WEBSITE_URL).value = rule.websiteUrl;
@@ -164,7 +157,6 @@ async function loadActiveRules() {
           try {
             await StorageService.deleteRule(rule.id);
             showToast("Rule removed successfully");
-            Analytics.trackRuleDeletion(rule.blockingMode);
             await loadRules(); // Only reload if we actually deleted
           } catch (error) {
             console.error("Error deleting rule:", error);
@@ -180,7 +172,6 @@ async function loadActiveRules() {
         e.stopPropagation();
         rule.enabled = !rule.enabled;
         await StorageService.updateRule(rule);
-        Analytics.trackRuleToggle(rule.enabled);
         await updateRuleLists();
       });
     })
@@ -206,14 +197,14 @@ async function loadApplyingRules() {
   const normalizeUrlForComparison = (url) => {
     try {
       // Add protocol if missing
-      if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        url = 'https://' + url;
+      if (!url.startsWith("http://") && !url.startsWith("https://")) {
+        url = "https://" + url;
       }
       const urlObj = new URL(url);
       return {
-        hostname: urlObj.hostname.replace(/^www\./, ''),
+        hostname: urlObj.hostname.replace(/^www\./, ""),
         pathname: urlObj.pathname,
-        fullUrl: url
+        fullUrl: url,
       };
     } catch (e) {
       return null;
@@ -229,7 +220,7 @@ async function loadApplyingRules() {
   // Filter rules that apply to current URL
   const applyingRules = currentRules.filter((rule) => {
     const rulePattern = rule.websiteUrl;
-    
+
     // Normalize URLs for comparison
     const normalizedRule = normalizeUrlForComparison(rulePattern);
     const normalizedCurrent = normalizeUrlForComparison(currentTabUrl);
@@ -252,8 +243,7 @@ async function loadApplyingRules() {
     if (rulePattern.includes("*")) {
       const regex = patternToRegex(rulePattern);
       // Test against both the full URL and just the hostname
-      return regex.test(currentTabUrl) || 
-             regex.test(normalizedCurrent.hostname);
+      return regex.test(currentTabUrl) || regex.test(normalizedCurrent.hostname);
     }
 
     return false;
@@ -328,7 +318,6 @@ function setupEventListeners() {
         timeRangeFields.classList.add("hidden");
         timeLimitFields.classList.remove("hidden");
       }
-      Analytics.trackBlockingModeSelection(e.target.value);
     });
   });
 
@@ -364,8 +353,6 @@ function setupEventListeners() {
       const validationResult = validateRule(rule);
 
       if (!validationResult.isValid) {
-        Analytics.trackError("form_error", validationResult.errors.join(", "));
-
         // Clear any existing error messages
         const errorFields = document.querySelectorAll(".error-message");
         errorFields.forEach((field) => field.remove());
@@ -419,19 +406,15 @@ function setupEventListeners() {
       if (blockForm.dataset.editRuleId) {
         rule.id = blockForm.dataset.editRuleId;
         await StorageService.saveRule(rule);
-        Analytics.trackRuleEdit(rule.blockingMode);
         delete blockForm.dataset.editRuleId;
       } else {
         await StorageService.saveRule(rule);
         showToast("Rule saved successfully!");
-        Analytics.trackRuleCreation(rule.blockingMode);
       }
 
       // Track time settings after successful save
       if (blockingMode === BLOCKING_MODES.TIME_RANGE) {
-        Analytics.trackTimeRangeSet(`${rule.startTime}-${rule.endTime}`);
       } else if (blockingMode === BLOCKING_MODES.TIME_LIMIT) {
-        Analytics.trackTimeRangeSet(`daily-${rule.dailyTimeLimit}`);
       }
 
       // Reset form and update lists
@@ -453,14 +436,12 @@ function setupEventListeners() {
     } catch (error) {
       console.error("Error saving rule:", error);
       showToast(error.message || "Failed to save rule", "error");
-      Analytics.trackError("save_error", error.message);
     }
   });
 
   // Handle removing all rules
   document.getElementById(DOM_IDS.REMOVE_ALL_RULES).addEventListener(EVENTS.CLICK, async () => {
     await StorageService.clearAllRules();
-    Analytics.trackClearAllRules();
     await updateRuleLists();
   });
 }
@@ -520,7 +501,6 @@ async function setupUI() {
     const urlInput = document.getElementById(DOM_IDS.WEBSITE_URL);
     if (urlInput) {
       urlInput.value = extractDomain(currentTabUrl);
-      Analytics.trackUrlAutofill();
     }
 
     // Add click handler to the parent div containing the link icon
@@ -557,7 +537,6 @@ async function setupUI() {
     iconContainer.addEventListener("click", async () => {
       try {
         await navigator.clipboard.writeText(currentTabUrl);
-        Analytics.trackUrlCopy(true);
         // Show success icon
         iconContainer.style.stroke = "#059669";
         iconContainer.innerHTML = successIcon;
@@ -566,7 +545,6 @@ async function setupUI() {
           iconContainer.innerHTML = originalIcon;
         }, 1000);
       } catch (err) {
-        Analytics.trackUrlCopy(false);
         console.error("Failed to copy URL:", err);
         // Show error icon
         iconContainer.style.stroke = "#DC2626";

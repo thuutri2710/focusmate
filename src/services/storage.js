@@ -82,6 +82,12 @@ function getCurrentTimeInMinutes() {
   return now.getHours() * 60 + now.getMinutes();
 }
 
+function getCurrentDayOfWeek() {
+  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const now = new Date();
+  return days[now.getDay()];
+}
+
 function parseTimeRange(startTime, endTime) {
   const [startHour, startMinute] = startTime.split(":").map(Number);
   const [endHour, endMinute] = endTime.split(":").map(Number);
@@ -99,6 +105,14 @@ function isWithinTimeRange(currentMinutes, startTime, endTime) {
 function isRuleMatched(rule, normalizedDomain, timeSpent, currentTimeMinutes) {
   if (!matchDomainPattern(normalizedDomain, extractDomain(rule.websiteUrl))) {
     return false;
+  }
+
+  // Check selected days if specified
+  if (rule.selectedDays && rule.selectedDays.length > 0) {
+    const currentDay = getCurrentDayOfWeek();
+    if (!rule.selectedDays.includes(currentDay)) {
+      return false;
+    }
   }
 
   // Check time range if specified
@@ -134,6 +148,11 @@ export const StorageService = {
   async saveRule(rule) {
     const rules = await getRulesFromCache();
     const existingRuleIndex = rules.findIndex((r) => r.id === rule.id);
+
+    // Set default selectedDays if not provided
+    if (!rule.selectedDays || rule.selectedDays.length === 0) {
+      rule.selectedDays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    }
 
     if (existingRuleIndex !== -1) {
       // Update existing rule

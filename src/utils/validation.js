@@ -1,4 +1,4 @@
-import { BLOCKING_MODES } from "../constants/index.js";
+import { BLOCKING_MODES, DAYS_LIST } from "../constants/index.js";
 
 const URL_PATTERNS = {
   PROTOCOL: /^https?:\/\//,
@@ -13,6 +13,8 @@ const VALIDATION_MESSAGES = {
   END_TIME_REQUIRED: "End time is required for time range blocking",
   DAILY_LIMIT_REQUIRED: "Daily time limit is required",
   DAILY_LIMIT_POSITIVE: "Daily time limit must be a positive number",
+  INVALID_DAYS: "Selected days must be valid days of the week",
+  AT_LEAST_ONE_DAY: "At least one day must be selected",
 };
 
 function isValidDomainPattern(domain) {
@@ -26,6 +28,12 @@ function isValidDomainPattern(domain) {
   return URL_PATTERNS.DOMAIN.test(domainWithoutProtocol);
 }
 
+function validateSelectedDays(days) {
+  if (!days || !Array.isArray(days)) return false;
+  if (days.length === 0) return false;
+  return days.every(day => DAYS_LIST.includes(day));
+}
+
 export function validateRule(rule) {
   const errors = [];
   const fieldErrors = {};
@@ -37,6 +45,12 @@ export function validateRule(rule) {
   } else if (!isValidDomainPattern(rule.websiteUrl)) {
     errors.push(VALIDATION_MESSAGES.INVALID_URL);
     fieldErrors.websiteUrl = VALIDATION_MESSAGES.INVALID_URL;
+  }
+
+  // Validate selected days
+  if (!validateSelectedDays(rule.selectedDays)) {
+    errors.push(VALIDATION_MESSAGES.AT_LEAST_ONE_DAY);
+    fieldErrors.selectedDays = VALIDATION_MESSAGES.AT_LEAST_ONE_DAY;
   }
 
   // Validate based on blocking mode

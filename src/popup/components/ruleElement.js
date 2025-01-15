@@ -1,8 +1,29 @@
-import { BLOCKING_MODES } from "../../constants/index.js";
+import { BLOCKING_MODES, DAY_LABELS, DAYS_OF_WEEK } from "../../constants/index.js";
 import { TEMPLATES } from "../../constants/templates.js";
 import { StorageService } from "../../services/storage.js";
 import { loadRules } from "../popup.js";
 import { showErrorToast } from "../../utils/uiUtils.js";
+
+function createDayCircles(selectedDays) {
+  const allDays = [
+    DAYS_OF_WEEK.SUNDAY,
+    DAYS_OF_WEEK.MONDAY,
+    DAYS_OF_WEEK.TUESDAY,
+    DAYS_OF_WEEK.WEDNESDAY,
+    DAYS_OF_WEEK.THURSDAY,
+    DAYS_OF_WEEK.FRIDAY,
+    DAYS_OF_WEEK.SATURDAY,
+  ];
+
+  return allDays
+    .map((day) => {
+      const isSelected = selectedDays === undefined || selectedDays.includes(day);
+      return `<span class="day-label-display ${isSelected ? "selected" : ""}">${
+        DAY_LABELS[day]
+      }</span>`;
+    })
+    .join("");
+}
 
 export async function createRuleElement(rule, isActiveView = false) {
   const div = document.createElement("div");
@@ -79,7 +100,10 @@ export async function createRuleElement(rule, isActiveView = false) {
           ${TEMPLATES.RULE_TEMPLATES.RULE_ACTIONS}
         </div>
         <div class="text-sm text-gray-500">
-          Redirect to: ${redirectDisplay}
+          <div class="days-container">
+            ${createDayCircles(rule.selectedDays)}
+          </div>
+          <div class="mb-1">Redirect to: ${redirectDisplay}</div>
         </div>
         ${timeRestrictionText || ""}
       </div>

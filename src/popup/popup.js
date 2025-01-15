@@ -3,10 +3,10 @@ import { createRuleElement } from "./components/ruleElement.js";
 import { validateRule } from "../utils/validation.js";
 import { showToast } from "../utils/uiUtils.js";
 import { showErrorToast } from "../utils/uiUtils.js";
-import { DOM_IDS, EVENTS, BLOCKING_MODES, TABS } from "../constants/index.js";
-import { TEMPLATES } from "../constants/templates.js";
 import { showConfirmationModal } from "../utils/uiUtils.js";
 import { extractDomain } from "../utils/urlUtils.js";
+import { DOM_IDS, EVENTS, BLOCKING_MODES, TABS, DAYS_LIST, DAY_LABELS } from "../constants/index.js";
+import { TEMPLATES } from "../constants/templates.js";
 
 // Track current tab URL
 let currentTabUrl = "";
@@ -60,10 +60,6 @@ document.addEventListener(EVENTS.DOM_CONTENT_LOADED, async () => {
 
     // Initial setup
     await setupUI();
-    await loadRules();
-    setupEventListeners();
-
-    // Start update interval after everything is set up
     startUpdateInterval();
   } catch (error) {
     console.error("Error initializing popup:", error);
@@ -128,6 +124,17 @@ async function loadActiveRules() {
           document.getElementById(DOM_IDS.END_TIME).value = rule.endTime;
         } else {
           document.getElementById(DOM_IDS.DAILY_TIME_LIMIT).value = rule.dailyTimeLimit;
+        }
+
+        // Set selected days
+        const selectedDays = rule.selectedDays;
+        if (selectedDays) {
+          selectedDays.forEach((day) => {
+            const checkbox = document.querySelector(`input[name="selectedDays"][value="${day}"]`);
+            if (checkbox) {
+              checkbox.checked = true;
+            }
+          });
         }
 
         // Store the rule ID for updating
@@ -280,7 +287,7 @@ async function loadApplyingRules() {
   }
 }
 
-function setupEventListeners() {
+async function setupEventListeners() {
   // Handle tab switching
   document.querySelectorAll("[data-tab]").forEach((tab) => {
     tab.addEventListener(EVENTS.CLICK, handleTabSwitch);
@@ -322,120 +329,44 @@ function setupEventListeners() {
   });
 
   // Handle form submission
-  const blockForm = document.getElementById(DOM_IDS.BLOCK_FORM);
-  blockForm.addEventListener("submit", async (e) => {
+  document.getElementById(DOM_IDS.BLOCK_FORM).addEventListener("submit", async (e) => {
     e.preventDefault();
+    const formData = new FormData(e.target);
 
-    const formData = new FormData(blockForm);
-    const websiteUrl = (formData.get("websiteUrl") || "").trim();
-    const redirectUrl = (formData.get("redirectUrl") || "").trim();
-    const blockingModeRadio = document.querySelector('input[name="blockingModeRadio"]:checked');
+    // Get selected days
+    const selectedDays = Array.from(document.querySelectorAll('input[name="selectedDays"]:checked'))
+      .map(checkbox => checkbox.value);
 
-    const blockingMode = blockingModeRadio.value;
-
-    // Construct the rule object for validation
     const rule = {
-      websiteUrl,
-      redirectUrl,
-      blockingMode,
+      websiteUrl: formData.get("websiteUrl"),
+      redirectUrl: formData.get("redirectUrl"),
+      blockingMode: formData.get("blockingModeRadio"),
+      selectedDays: selectedDays,
     };
 
-    // Add time-specific fields based on blocking mode
-    if (blockingMode === BLOCKING_MODES.TIME_RANGE) {
-      rule.startTime = formData.get("startTime") || "";
-      rule.endTime = formData.get("endTime") || "";
-    } else if (blockingMode === BLOCKING_MODES.TIME_LIMIT) {
-      rule.dailyTimeLimit = formData.get("dailyTimeLimit") || "";
+    if (rule.blockingMode === BLOCKING_MODES.TIME_RANGE) {
+      rule.startTime = formData.get("startTime");
+      rule.endTime = formData.get("endTime");
+    } else {
+      rule.dailyTimeLimit = formData.get("dailyTimeLimit");
+    }
+
+    // If editing existing rule, include the ID
+    const editRuleId = e.target.dataset.editRuleId;
+    if (editRuleId) {
+      rule.id = editRuleId;
     }
 
     try {
-      // Validate the rule first
-      const validationResult = validateRule(rule);
-
-      if (!validationResult.isValid) {
-        // Clear any existing error messages
-        const errorFields = document.querySelectorAll(".error-message");
-        errorFields.forEach((field) => field.remove());
-
-        // Clear error states from inputs
-        const inputs = blockForm.querySelectorAll("input");
-        inputs.forEach((input) => {
-          input.classList.remove("border-red-500", "focus:ring-red-500");
-        });
-
-        // Show field-specific errors
-        Object.entries(validationResult.fieldErrors).forEach(([field, error]) => {
-          let targetInput;
-          switch (field) {
-            case "websiteUrl":
-              targetInput = blockForm.querySelector("#websiteUrl");
-              break;
-            case "startTime":
-              targetInput = blockForm.querySelector('[name="startTime"]');
-              break;
-            case "endTime":
-              targetInput = blockForm.querySelector('[name="endTime"]');
-              break;
-            case "dailyTimeLimit":
-              targetInput = blockForm.querySelector('[name="dailyTimeLimit"]');
-              break;
-          }
-
-          if (targetInput) {
-            // Find the parent div that contains the input
-            const inputGroup = targetInput.closest(".mb-4");
-            if (inputGroup) {
-              // Create error message div
-              const errorDiv = document.createElement("div");
-              errorDiv.className = "error-message text-xs text-red-600 mt-1";
-              errorDiv.textContent = error;
-
-              // Add the error message
-              inputGroup.appendChild(errorDiv);
-
-              // Add error styling to input
-              targetInput.classList.add("border-red-500");
-              targetInput.classList.add("focus:ring-red-500");
-            }
-          }
-        });
-        return;
-      }
-
-      // If validation passes, proceed with saving
-      if (blockForm.dataset.editRuleId) {
-        rule.id = blockForm.dataset.editRuleId;
-        await StorageService.saveRule(rule);
-        delete blockForm.dataset.editRuleId;
-      } else {
-        await StorageService.saveRule(rule);
-        showToast("Rule saved successfully!");
-      }
-
-      // Track time settings after successful save
-      if (blockingMode === BLOCKING_MODES.TIME_RANGE) {
-      } else if (blockingMode === BLOCKING_MODES.TIME_LIMIT) {
-      }
-
-      // Reset form and update lists
-      blockForm.reset();
-      document.querySelector(`#${DOM_IDS.BLOCK_FORM} button[type="submit"]`).textContent =
-        "Add blocking rule";
-
-      // Clear any existing error messages and states
-      const errorFields = document.querySelectorAll(".error-message");
-      errorFields.forEach((field) => field.remove());
-
-      // Clear error states from inputs
-      const inputs = blockForm.querySelectorAll("input");
-      inputs.forEach((input) => {
-        input.classList.remove("border-red-500", "focus:ring-red-500");
-      });
-
-      await updateRuleLists();
+      await StorageService.saveRule(rule);
+      showToast(editRuleId ? "Rule updated successfully" : "Rule added successfully");
+      e.target.reset();
+      e.target.dataset.editRuleId = "";
+      document.querySelector(`#${DOM_IDS.BLOCK_FORM} button[type="submit"]`).textContent = "Add blocking rule";
+      await loadRules();
     } catch (error) {
       console.error("Error saving rule:", error);
-      showToast(error.message || "Failed to save rule", "error");
+      showErrorToast(error.message || "Failed to save rule");
     }
   });
 
@@ -446,36 +377,46 @@ function setupEventListeners() {
   });
 }
 
+function resetDaySelections() {
+  const dayCheckboxes = document.querySelectorAll('input[name="selectedDays"]');
+  dayCheckboxes.forEach(checkbox => {
+    checkbox.checked = true;
+  });
+}
+
 function handleTabSwitch(e) {
-  const tabButton = e.target.closest("[data-tab]");
-  if (!tabButton) return;
+  const selectedTab = e.currentTarget;
+  const targetId = selectedTab.dataset.tab;
 
-  // Get the target content ID from the data-tab attribute
-  const targetId = tabButton.dataset.tab;
-
-  // Hide all tab content
-  document.querySelectorAll(".tab-pane").forEach((pane) => {
-    pane.classList.add("hidden");
-  });
-
-  // Show target content
-  document.getElementById(targetId).classList.remove("hidden");
-
-  // Update button states
-  document.querySelectorAll(".tab-button").forEach((button) => {
-    button.classList.remove("border-blue-500", "text-blue-600");
-    button.classList.add("border-transparent", "text-gray-500");
-  });
-
-  tabButton.classList.remove("border-transparent", "text-gray-500");
-  tabButton.classList.add("border-blue-500", "text-blue-600");
-
-  // If switching to the applying rules tab, update the rules
-  if (targetId === TABS.CONTENT.CURRENT_PAGE) {
-    loadApplyingRules();
-  } else if (targetId === TABS.CONTENT.ALL_RULES) {
-    loadActiveRules();
+  // Don't switch if we're coming from edit button click
+  if (isEditButtonClick && targetId === DOM_IDS.ADD_RULE_CONTENT) {
+    return;
   }
+
+  // Reset form when switching to Add Rule tab
+  if (targetId === DOM_IDS.ADD_RULE_CONTENT) {
+    const form = document.getElementById(DOM_IDS.BLOCK_FORM);
+    form.reset();
+    resetDaySelections();
+    form.dataset.editRuleId = "";
+    document.querySelector(`#${DOM_IDS.BLOCK_FORM} button[type="submit"]`).textContent = "Add blocking rule";
+  }
+
+  // Update tab button styles
+  document.querySelectorAll(".tab-button").forEach((tab) => {
+    if (tab === selectedTab) {
+      tab.classList.remove("border-transparent", "text-gray-500", "hover:text-gray-700", "hover:border-gray-300");
+      tab.classList.add("border-blue-500", "text-blue-600");
+    } else {
+      tab.classList.remove("border-blue-500", "text-blue-600");
+      tab.classList.add("border-transparent", "text-gray-500", "hover:text-gray-700", "hover:border-gray-300");
+    }
+  });
+
+  // Show selected tab content
+  document.querySelectorAll(".tab-pane").forEach((pane) => {
+    pane.classList.toggle("hidden", pane.id !== targetId);
+  });
 }
 
 // Update both rule lists after changes
@@ -556,4 +497,6 @@ async function setupUI() {
       }
     });
   }
+  setupEventListeners();
+  await loadRules();
 }

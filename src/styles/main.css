@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles */
+body {
+  min-width: 400px;
+  max-width: 600px;
+}
+
+/* Dark mode styles */
+.dark-mode {
+  @apply bg-gray-900 text-white;
+}
+
+.dark-mode .bg-white {
+  @apply bg-gray-800;
+}
+
+.dark-mode .text-gray-800 {
+  @apply text-gray-100;
+}
+
+.dark-mode .text-gray-700 {
+  @apply text-gray-200;
+}
+
+.dark-mode .text-gray-600 {
+  @apply text-gray-300;
+}
+
+.dark-mode .text-gray-500 {
+  @apply text-gray-400;
+}
+
+.dark-mode .border {
+  @apply border-gray-700;
+}
+
+.dark-mode .bg-gray-50 {
+  @apply bg-gray-900;
+}
+
+.dark-mode .bg-blue-50 {
+  @apply bg-blue-900 bg-opacity-20;
+}
+
+.dark-mode .border-blue-200 {
+  @apply border-blue-700;
+}
+
+/* Animation for toast */
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.toast-enter {
+  animation: slideIn 0.3s forwards;
+}
+
+.toast-exit {
+  animation: slideOut 0.3s forwards;
+}

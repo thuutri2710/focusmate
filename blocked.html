@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Website Blocked</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        padding: 50px;
+        background-color: #f8f9fa;
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+      }
+      .container {
+        max-width: 600px;
+        width: 100%;
+        background-color: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        color: #e53e3e;
+        margin-top: 0;
+      }
+      p {
+        font-size: 18px;
+        line-height: 1.6;
+        color: #4a5568;
+      }
+      .logo {
+        margin-bottom: 20px;
+        font-weight: bold;
+        font-size: 24px;
+        color: #2d3748;
+      }
+      .block-info {
+        margin-top: 20px;
+        background-color: #f7fafc;
+        border-radius: 8px;
+        padding: 15px;
+        text-align: left;
+      }
+      .block-info h2 {
+        font-size: 18px;
+        margin-top: 0;
+        color: #2d3748;
+      }
+      .block-info p {
+        font-size: 14px;
+        margin: 5px 0;
+      }
+      .block-reason {
+        font-weight: bold;
+        color: #e53e3e;
+      }
+      .block-time {
+        font-size: 12px;
+        color: #718096;
+      }
+      .return-link {
+        display: inline-block;
+        margin-top: 20px;
+        background-color: #4299e1;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 5px;
+        text-decoration: none;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="logo">FocusMate</div>
+      <h1>Website Blocked</h1>
+      <p>This website has been blocked by FocusMate to help you stay focused.</p>
+      
+      <div id="block-info" class="block-info">
+        <h2>Blocking Details</h2>
+        <p id="domain-info">Domain: <span id="blocked-domain"></span></p>
+        <p>Rule: <span id="rule-name"></span></p>
+        <p>Reason: <span id="block-reason" class="block-reason"></span></p>
+        <p class="block-time" id="block-time"></p>
+      </div>
+      
+      <p>You can adjust your blocking rules in the FocusMate extension popup.</p>
+      <a href="javascript:history.back()" class="return-link">Go Back</a>
+    </div>
+    <script>
+      // Get the current URL that was blocked
+      const urlParams = new URLSearchParams(window.location.search);
+      const blockedUrl = urlParams.get('url');
+      
+      if (blockedUrl) {
+        // Display the blocked URL
+        document.getElementById('blocked-domain').textContent = new URL(decodeURIComponent(blockedUrl)).hostname;
+        
+        // Try to get rule details from the background script
+        chrome.runtime.sendMessage(
+          { type: 'get_matched_rules' },
+          function(response) {
+            if (response && response.success && response.data && response.data.length > 0) {
+              // Find the matching rule for this URL
+              const matchedRule = response.data.find(r => 
+                r.url && decodeURIComponent(blockedUrl).includes(r.url));
+              
+              if (matchedRule) {
+                // Display rule details
+                document.getElementById('rule-name').textContent = 
+                  matchedRule.rule.customMessage || 'Standard blocking rule';
+                document.getElementById('block-reason').textContent = matchedRule.matchReason;
+                
+                // Format the time
+                const blockTime = new Date(matchedRule.matchTime);
+                document.getElementById('block-time').textContent = 
+                  `Blocked at: ${blockTime.toLocaleTimeString()}`;
+              } else {
+                document.getElementById('rule-name').textContent = 'Unknown rule';
+                document.getElementById('block-reason').textContent = 'Domain matched blocking rule';
+              }
+            } else {
+              document.getElementById('rule-name').textContent = 'Active blocking rule';
+              document.getElementById('block-reason').textContent = 'Domain matched blocking rule';
+            }
+          }
+        );
+      } else {
+        // If no URL parameter, hide the block info section
+        document.getElementById('block-info').style.display = 'none';
+      }
+    </script>
+  </body>
+</html>
